@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="8dp"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="1dp"
+    app:cardBackgroundColor="@color/surface_container_high"
+    app:strokeColor="@color/outline"
+    app:strokeWidth="1dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- Step Header -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <!-- Step Completion Checkbox -->
+            <com.google.android.material.checkbox.MaterialCheckBox
+                android:id="@+id/step_checkbox"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_marginEnd="12dp"
+                app:buttonTint="@color/primary" />
+
+            <!-- Step Info -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/step_name"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Step Name"
+                    android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+                    android:textColor="@color/on_surface" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="4dp">
+
+                    <TextView
+                        android:id="@+id/step_duration"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="7 days"
+                        android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
+                        android:textColor="@color/on_surface_variant"
+                        android:drawablePadding="4dp"
+                        android:drawableStart="@drawable/ic_time_modern" />
+
+                    <TextView
+                        android:id="@+id/step_progress"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="0/0 done"
+                        android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
+                        android:textColor="@color/on_surface_variant"
+                        android:layout_marginStart="16dp"
+                        android:drawablePadding="4dp"
+                        android:drawableStart="@drawable/ic_substep_task" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <!-- Expand Button -->
+            <ImageButton
+                android:id="@+id/btn_expand"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:src="@drawable/ic_expand_more"
+                app:tint="@color/on_surface_variant"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:scaleType="centerInside"
+                android:contentDescription="Expand Steps" />
+
+        </LinearLayout>
+
+        <!-- Progress Indicator -->
+        <com.google.android.material.progressindicator.LinearProgressIndicator
+            android:id="@+id/step_progress_bar"
+            android:layout_width="match_parent"
+            android:layout_height="4dp"
+            android:layout_marginTop="8dp"
+            app:trackColor="@color/surface_variant"
+            app:indicatorColor="@color/primary"
+            app:trackCornerRadius="2dp" />
+
+        <!-- Substeps Container -->
+        <LinearLayout
+            android:id="@+id/substeps_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginStart="36dp"
+            android:layout_marginTop="12dp"
+            android:visibility="gone" />
+
+        <!-- Add Substep Button - FIXED: Use android:textColor -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_add_substep"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Add Sub-step"
+            android:textColor="@color/primary"
+            android:layout_marginTop="8dp"
+            app:strokeColor="@color/outline"
+            app:strokeWidth="1dp"
+            app:icon="@drawable/ic_add"
+            app:iconTint="@color/primary"
+            app:backgroundTint="@color/surface_container_high"
+            app:cornerRadius="8dp"
+            android:layout_gravity="end" />
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>

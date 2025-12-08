@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/nav_habits"
+        android:icon="@drawable/ic_habits"
+        android:title="Habits" />
+    <item
+        android:id="@+id/nav_goals"
+        android:icon="@drawable/ic_goals"
+        android:title="Goals" />
+    <item
+        android:id="@+id/nav_progress"
+        android:icon="@drawable/ic_progress"
+        android:title="Progress" />
+</menu>

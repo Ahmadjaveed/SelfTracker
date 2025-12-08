@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background"
+    android:fitsSystemWindows="true">
+
+    <!-- Fragment Container -->
+    <FrameLayout
+        android:id="@+id/fragment_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginBottom="80dp" 
+        tools:context=".activities.MainActivity" />
+
+    <!-- Curved Bottom Navigation (Fork of Meow) -->
+    <com.qamar.curvedbottomnaviagtion.CurvedBottomNavigation
+        android:id="@+id/meow_bottom_navigation"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        app:cbn_background="@color/surface"
+        app:cbn_iconColor="@color/bottom_nav_unselected"
+        app:cbn_selectedIconColor="@color/on_primary"
+        app:cbn_fabColor="@color/primary"
+        app:cbn_selected_icon_size="48dp"
+        app:cbn_icon_size="24dp" />
+
+    <!-- FAB (Floating above content) -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fab_add"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="24dp"
+        android:layout_marginBottom="90dp"
+        android:src="@drawable/ic_add"
+        android:contentDescription="Add New Item"
+        android:visibility="visible"
+        app:backgroundTint="@color/secondary"
+        app:tint="@color/on_secondary"
+        app:fabCustomSize="56dp"
+        app:elevation="8dp"
+        app:borderWidth="0dp" />
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

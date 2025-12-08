@@ -1,0 +1,35 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Glow/Shadow behind -->
+    <path
+        android:fillColor="#312E81"
+        android:pathData="M54,90 C40,88 30,75 28,60 C26,45 35,30 45,25 L48,28 C40,32 32,45 34,58 C36,70 45,82 56,84 Z"
+        android:fillAlpha="0.3"/>
+
+    <!-- Main Body - Bright Yellow -->
+    <path
+        android:fillColor="#FFEB3B"
+        android:pathData="M65,22 C65,22 75,20 82,25 C82,25 78,35 70,45 C60,58 48,70 34,75 C34,75 30,72 30,72 C45,65 58,50 65,35 C68,28 65,22 65,22 Z" />
+
+    <!-- Tech Circuit Accent - Cyan -->
+    <path
+        android:fillColor="#22D3EE"
+        android:pathData="M70,30 L74,26 L78,30 L74,34 Z" />
+        
+    <!-- Tech Lines - White -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:pathData="M72,32 L68,36 M40,65 L45,60" />
+
+    <!-- Nano Dot -->
+     <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M80,20 h3 v3 h-3 z" />
+
+</vector>

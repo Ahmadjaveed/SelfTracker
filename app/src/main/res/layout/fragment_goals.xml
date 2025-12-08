@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/background">
+
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/surface"
+        android:elevation="4dp"
+        app:title="Long-term Goals"
+        app:titleTextColor="@color/primary_text"
+        app:menu="@menu/top_bar_menu_generic" >
+        
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:orientation="horizontal">
+            
+            <ImageButton
+                 android:id="@+id/btn_notifications"
+                 android:layout_width="48dp"
+                 android:layout_height="48dp"
+                 android:src="@drawable/ic_notifications"
+                 android:background="?attr/selectableItemBackgroundBorderless"
+                 app:tint="@color/secondary_text"
+                 android:contentDescription="Notifications"/>
+
+
+                 
+        </LinearLayout>
+    </com.google.android.material.appbar.MaterialToolbar>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <LinearLayout
+            android:id="@+id/goals_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+
+    </ScrollView>
+
+</LinearLayout>

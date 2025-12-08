@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+    <domain-config>
+        <domain name="shared_pref" includeProtected="true" />
+        <domain name="file" includeProtected="true" />
+        <domain name="database" includeProtected="true" />
+    </domain-config>
+</data-extraction-rules>

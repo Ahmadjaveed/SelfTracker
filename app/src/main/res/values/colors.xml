@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- MAIN PALETTE: Indigo & Teal -->
+    <color name="primary">#4F46E5</color>      <!-- Indigo 600 -->
+    <color name="primary_dark">#3730A3</color> <!-- Indigo 800 -->
+    <color name="primary_light">#818CF8</color> <!-- Indigo 400 -->
+    <color name="on_primary">#FFFFFF</color>
+
+    <!-- SECONDARY: Teal (for accents, success, FABs) -->
+    <color name="secondary">#10B981</color>      <!-- Emerald 500 -->
+    <color name="secondary_dark">#047857</color> <!-- Emerald 700 -->
+    <color name="secondary_light">#6EE7B7</color> <!-- Emerald 300 -->
+    <color name="on_secondary">#FFFFFF</color>
+
+    <!-- TERTIARY: Rose (for emotional/habit tracking) -->
+    <color name="tertiary">#E11D48</color>       <!-- Rose 600 -->
+    <color name="tertiary_dark">#9F1239</color>  <!-- Rose 800 -->
+    <color name="tertiary_light">#FB7185</color> <!-- Rose 400 -->
+    <color name="on_tertiary">#FFFFFF</color>
+
+    <!-- BACKGROUNDS & SURFACES -->
+    <color name="background">#FAFAFA</color>     <!-- Warm Gray 50 -->
+    <color name="surface">#FFFFFF</color>
+    <color name="surface_variant">#F1F5F9</color> <!-- Slate 100 -->
+    <color name="on_background">#1E293B</color>   <!-- Slate 800 -->
+    <color name="on_surface">#1E293B</color>
+    <color name="on_surface_variant">#64748B</color> <!-- Slate 500 -->
+
+    <!-- SURFACE CONTAINERS (Material 3 specific) -->
+    <color name="surface_container_low">#FFFFFF</color>
+    <color name="surface_container">#F8FAFC</color>
+    <color name="surface_container_high">#F1F5F9</color>
+    <color name="surface_bright">#FFFFFF</color>
+    <color name="surface_dim">#E2E8F0</color>
+
+    <!-- ERROR -->
+    <color name="error">#EF4444</color>
+    <color name="red_400">#F87171</color> <!-- Red 400 -->
+    <color name="error_dark">#B91C1C</color>
+    <color name="error_light">#FECACA</color>
+    <color name="on_error">#FFFFFF</color>
+
+    <!-- SUCCESS (Reusing Secondary or distinct green) -->
+    <color name="success">#10B981</color>
+    <color name="success_light">#34D399</color>
+    <color name="success_dark">#059669</color>
+    <color name="on_success">#FFFFFF</color>
+
+    <!-- WARNING -->
+    <color name="warning">#F59E0B</color>
+    <color name="warning_light">#FCD34D</color>
+    <color name="warning_dark">#B45309</color>
+    <color name="on_warning">#FFFFFF</color>
+
+    <!-- INFO -->
+    <color name="info">#3B82F6</color>
+    <color name="info_light">#60A5FA</color>
+    <color name="info_dark">#1D4ED8</color>
+    <color name="on_info">#FFFFFF</color>
+
+    <!-- NEUTRALS -->
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+    <color name="transparent">#00000000</color>
+
+    <!-- TEXT COLORS -->
+    <color name="primary_text">#1E293B</color> <!-- Slate 800 -->
+    <color name="secondary_text">#64748B</color> <!-- Slate 500 -->
+    <color name="hint_text">#94A3B8</color>    <!-- Slate 400 -->
+    <color name="disabled_text">#CBD5E1</color> <!-- Slate 300 -->
+
+    <!-- COMPONENT SPECIFIC -->
+    
+    <!-- Bottom Navigation -->
+    <color name="bottom_nav_selected">#4F46E5</color>
+    <color name="bottom_nav_unselected">#475569</color>
+    <color name="bottom_nav_background">#FFFFFF</color>
+
+    <!-- Status/Streak Colors -->
+    <color name="status_completed">#10B981</color>
+    <color name="status_pending">#F59E0B</color>
+    <color name="status_missed">#EF4444</color>
+    <color name="status_upcoming">#3B82F6</color>
+
+    <!-- Legacy Colors (Mapped to new palette for compatibility) -->
+    <color name="dark_gray">#334155</color>
+    <color name="light_gray">#E2E8F0</color>
+    <color name="gray">#94A3B8</color>
+    <color name="green">#10B981</color>
+
+    <!-- Card Colors -->
+    <color name="card_background">#FFFFFF</color>
+    <color name="card_elevated">#FFFFFF</color>
+    <color name="card_stroke">#E2E8F0</color> <!-- Delicate stroke -->
+    <color name="card_background_dark">#1E293B</color> <!-- Slate 800 for AI cards -->
+
+    <!-- Containers -->
+    <color name="primary_container">#E0E7FF</color> <!-- Indigo 100 -->
+    <color name="on_primary_container">#3730A3</color>
+    <color name="secondary_container">#D1FAE5</color> <!-- Emerald 100 -->
+    <color name="on_secondary_container">#065F46</color>
+    <color name="tertiary_container">#FFE4E6</color> <!-- Rose 100 -->
+    <color name="on_tertiary_container">#881337</color>
+    
+    <color name="success_container">#D1FAE5</color>
+    <color name="on_success_container">#065F46</color>
+    <color name="warning_container">#FEF3C7</color>
+    <color name="on_warning_container">#92400E</color>
+
+    <!-- Interactive States -->
+    <color name="primary_pressed">#312E81</color>
+    <color name="surface_pressed">#F1F5F9</color>
+    <color name="outline">#E2E8F0</color>
+    <color name="outline_variant">#F1F5F9</color>
+
+    <!-- Ripple Color (for touch feedback) -->
+    <color name="ripple_color">#1F4F46E5</color> <!-- Low opacity primary -->
+
+    <!-- Legacy & Missing Colors (Restored for Layouts) -->
+    <color name="progress_background">@color/surface_container_high</color>
+    <color name="progress_foreground">@color/primary</color>
+    <color name="streak_active">#F59E0B</color> <!-- Amber 500 -->
+    <color name="streak_inactive">@color/surface_variant</color>
+    
+    <color name="gray_100">#F1F5F9</color>
+    <color name="gray_200">#E2E8F0</color>
+    <color name="gray_300">#CBD5E1</color>
+    <color name="gray_400">#94A3B8</color>
+    <color name="gray_500">#64748B</color>
+    <color name="gray_600">#475569</color>
+    <color name="gray_700">#334155</color>
+
+    <!-- NEW: Step Visualization Colors -->
+    <color name="step_node_line">#CBD5E1</color> <!-- Slate 300 -->
+    <color name="step_background_pending">#F8FAFC</color>
+    <color name="step_background_completed">#F0FDF4</color> <!-- Light Green tint -->
+    <color name="step_stroke_pending">#E2E8F0</color>
+    <color name="step_stroke_completed">#BBF7D0</color>
+
+    <!-- NEW: Better Surface Contrast -->
+    <color name="surface_container_highest">#E2E8F0</color> <!-- Stronger contrast for cards -->
+
+    <!-- API Compatibility Aliases (User Requested) -->
+    <color name="accent">@color/secondary</color>
+    <color name="text_on_primary">@color/on_primary</color>
+    <color name="text_on_surface">@color/on_surface</color>
+
+</resources>

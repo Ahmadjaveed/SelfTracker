@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Self Tracker</string>
+    <string name="habits">Habits</string>
+    <string name="goals">Goals</string>
+    <string name="progress">Progress</string>
+    <string name="add_habit">Add Habit</string>
+    <string name="add_goal">Add Goal</string>
+    <string name="habit_name">Habit Name</string>
+    <string name="goal_name">Goal Name</string>
+    <string name="description">Description</string>
+    <string name="target_value">Target Value</string>
+    <string name="unit">Unit (e.g., minutes, pages)</string>
+    <string name="target_date">Target Date (YYYY-MM-DD)</string>
+    <string name="schedule_type">Schedule Type</string>
+    <string name="fixed_time">Fixed Time</string>
+    <string name="any_time">Any Time</string>
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+    <string name="delete">Delete</string>
+    <string name="edit">Edit</string>
+    <string name="current_streak">Current Streak</string>
+    <string name="best_streak">Best Streak</string>
+    <string name="mark_complete">Mark Complete</string>
+    <string name="days">days</string>
+    <string name="no_habits">No habits yet. Create one to get started!</string>
+    <string name="no_goals">No goals yet. Create one to get started!</string>
+    <string name="progress_report">Progress Report</string>
+    <string name="this_month">This Month</string>
+    <string name="monthly_progress">Monthly Progress</string>
+    <string name="days_remaining">Days Remaining</string>
+    <string name="completed">Completed</string>
+</resources>

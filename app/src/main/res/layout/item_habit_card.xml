@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/card_root"
+    style="@style/Widget.Material3.CardView.Elevated"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="16dp"
+    android:layout_marginVertical="8dp"
+    android:clickable="true"
+    android:focusable="true"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="2dp"
+    app:strokeWidth="1dp"
+    app:strokeColor="@color/outline_variant"
+    app:cardBackgroundColor="@color/surface">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp"
+        android:background="?attr/selectableItemBackground">
+
+        <!-- Habit Illustration -->
+        <ImageView
+            android:id="@+id/icon_habit"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@drawable/ic_habit_tracker"
+            android:contentDescription="Habit Icon"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <!-- Text Container -->
+        <LinearLayout
+            android:id="@+id/text_container"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="8dp"
+            app:layout_constraintStart_toEndOf="@id/icon_habit"
+            app:layout_constraintEnd_toStartOf="@+id/btn_complete_habit"
+            app:layout_constraintTop_toTopOf="@id/icon_habit">
+
+            <TextView
+                android:id="@+id/habit_name"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Habit Name"
+                android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+                android:textStyle="bold"
+                android:textColor="@color/on_surface"
+                android:maxLines="1"
+                android:ellipsize="end" />
+
+            <TextView
+                android:id="@+id/habit_target"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Daily Goal: 5 times"
+                android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+                android:textColor="@color/on_surface_variant"
+                android:layout_marginTop="2dp" />
+
+        </LinearLayout>
+
+
+
+        <!-- Stats Row (Streak & Best) -->
+        <LinearLayout
+            android:id="@+id/stats_row"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/bg_stats_container"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="8dp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/btn_complete_habit"
+            app:layout_constraintTop_toBottomOf="@id/text_container"
+            android:layout_marginEnd="16dp">
+
+            <TextView
+                android:id="@+id/habit_streak_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🔥 Streak"
+                android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
+                android:textColor="@color/on_surface_variant" />
+
+            <TextView
+                android:id="@+id/habit_streak"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="7"
+                android:textAppearance="@style/TextAppearance.Material3.LabelMedium"
+                android:textStyle="bold"
+                android:textColor="@color/primary"
+                android:layout_marginStart="6dp" />
+             
+            <View
+                android:layout_width="1dp"
+                android:layout_height="12dp"
+                android:background="@color/outline_variant"
+                android:layout_marginHorizontal="8dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Best"
+                android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
+                android:textColor="@color/on_surface_variant" />
+
+            <TextView
+                android:id="@+id/habit_best_streak"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="30"
+                android:textAppearance="@style/TextAppearance.Material3.LabelMedium"
+                android:textStyle="bold"
+                android:textColor="@color/on_surface" 
+                android:layout_marginStart="6dp"/>
+
+        </LinearLayout>
+
+        <!-- Quick Complete Action Button -->
+         <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_complete_habit"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            app:icon="@drawable/ic_check"
+            app:iconGravity="textStart"
+            android:padding="0dp"
+            app:iconPadding="0dp"
+            app:iconSize="28dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:insetLeft="0dp"
+            android:insetRight="0dp"
+            app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full"
+            app:backgroundTint="@color/primary_container"
+            app:iconTint="@color/primary"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="@id/stats_row"
+            app:layout_constraintBottom_toBottomOf="@id/stats_row"
+            android:contentDescription="Mark Complete" />
+
+        <!-- Progress Indicator (Bottom) -->
+        <com.google.android.material.progressindicator.LinearProgressIndicator
+            android:id="@+id/progress_bar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            app:trackCornerRadius="4dp"
+            app:trackThickness="6dp"
+            app:trackColor="@color/surface_container_high"
+            app:indicatorColor="@color/primary"
+            app:layout_constraintTop_toBottomOf="@id/stats_row"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</com.google.android.material.card.MaterialCardView>

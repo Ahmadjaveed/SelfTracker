@@ -1,0 +1,263 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    app:cardCornerRadius="28dp"
+    app:cardElevation="8dp"
+    android:backgroundTint="@color/surface">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <!-- Header -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:layout_marginBottom="24dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/dialog_habit_name"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Habit Name"
+                    android:textColor="@color/primary_text"
+                    android:textSize="24sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/dialog_habit_schedule"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Daily"
+                    android:textColor="@color/secondary_text"
+                    android:textSize="14sp" />
+            </LinearLayout>
+
+            <ImageButton
+                android:id="@+id/btn_close_header"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:src="@drawable/ic_close"
+                app:tint="@color/secondary_text"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:scaleType="centerInside"
+                android:padding="8dp"/>
+        </LinearLayout>
+
+        <!-- Stats Grid -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:baselineAligned="false"
+            android:layout_marginBottom="24dp">
+
+            <!-- Current Streak -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:background="@drawable/bg_stats_card"
+                android:padding="16dp"
+                android:layout_marginEnd="8dp">
+
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/ic_target"
+                    app:tint="@color/primary" />
+
+                <TextView
+                    android:id="@+id/dialog_current_streak"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="5"
+                    android:textColor="@color/primary_text"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:layout_marginTop="8dp"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Streak"
+                    android:textColor="@color/secondary_text"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <!-- Best Streak -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:background="@drawable/bg_stats_card"
+                android:padding="16dp"
+                android:layout_marginStart="4dp"
+                android:layout_marginEnd="4dp">
+
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/ic_flag_total"
+                    app:tint="@color/secondary" />
+
+                <TextView
+                    android:id="@+id/dialog_best_streak"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="12"
+                    android:textColor="@color/primary_text"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:layout_marginTop="8dp"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Best"
+                    android:textColor="@color/secondary_text"
+                    android:textSize="12sp" />
+            </LinearLayout>
+            
+             <!-- Target -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:background="@drawable/bg_stats_card"
+                android:padding="16dp"
+                android:layout_marginStart="8dp">
+
+                <ImageView
+                    android:id="@+id/dialog_target_icon"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/ic_goal"
+                    app:tint="@color/accent" />
+
+                <TextView
+                    android:id="@+id/dialog_target"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="10"
+                    android:textColor="@color/primary_text"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:layout_marginTop="8dp"/>
+
+                 <TextView
+                    android:id="@+id/dialog_unit"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="mins"
+                    android:textColor="@color/secondary_text"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+        </LinearLayout>
+        
+        <!-- Last Completed -->
+         <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@drawable/progress_section_background"
+            android:padding="12dp"
+            android:layout_marginBottom="24dp">
+            
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_calendar_small"
+                app:tint="@color/secondary_text"
+                android:layout_marginEnd="12dp"/>
+                
+             <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+                 <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Last Completed"
+                    android:textColor="@color/secondary_text"
+                    android:textSize="12sp"/>
+                 <TextView
+                    android:id="@+id/dialog_last_completed"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Today"
+                    android:textColor="@color/primary_text"
+                    android:textStyle="bold"
+                    android:textSize="14sp"/>
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Actions -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:weightSum="3"
+            android:gravity="center">
+
+            <Button
+                android:id="@+id/btn_delete"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Delete"
+                android:textColor="@color/error"
+                android:layout_marginEnd="4dp" />
+
+            <Button
+                android:id="@+id/btn_edit"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Edit"
+                app:strokeColor="@color/primary"
+                android:textColor="@color/primary"
+                android:layout_marginEnd="4dp"/>
+
+            <Button
+                android:id="@+id/btn_stats"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Stats"
+                android:textSize="12sp"
+                app:strokeColor="@color/secondary"
+                android:textColor="@color/secondary"
+                android:layout_marginEnd="4dp"/>
+                
+
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>
