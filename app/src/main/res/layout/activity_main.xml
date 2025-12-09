@@ -29,7 +29,7 @@
         app:cbn_iconColor="@color/bottom_nav_unselected"
         app:cbn_selectedIconColor="@color/on_primary"
         app:cbn_selected_icon_size="48dp"
-        app:cbn_icon_size="24dp" />
+        app:cbn_icon_size="28dp" />
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fab_add"
