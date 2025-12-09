@@ -12,7 +12,9 @@
         android:layout_height="?attr/actionBarSize"
         android:background="@color/premium_dark_bg"
         android:elevation="4dp"
-        app:title="Long-term Goals"
+        app:title="My Goals"
+        app:navigationIcon="@drawable/ic_rocket_toolbar"
+        app:navigationIconTint="@color/white"
         app:titleTextColor="@color/white"
         app:theme="@style/DarkToolbarTheme"
         app:menu="@menu/top_bar_menu_generic" >

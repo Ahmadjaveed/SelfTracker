@@ -12,15 +12,16 @@ import kotlinx.coroutines.withContext
 class GoalGeneratorRepository {
 
     // List of models to try in order of preference.
-    // User has access to advanced/experimental models (2.0/2.5/3.0).
-    // Prioritizing 2.0 Flash as it is likely stable enough for JSON tasks.
+    // Prioritizing stable 1.5 versions to avoid Quota issues with experimental models.
     private val candidateModels = listOf(
-        "gemini-2.0-flash",
-        "gemini-2.0-flash-exp",
-        "gemini-2.5-flash",
+        "gemini-1.5-flash-001",
+        "gemini-1.5-flash-002",
         "gemini-1.5-flash",
+        "gemini-1.5-flash-latest",
+        "gemini-1.5-pro-001",
         "gemini-1.5-pro",
-        "gemini-1.0-pro"
+        "gemini-pro",
+        "gemini-2.0-flash-exp"
     )
 
     private val apiKey = BuildConfig.GEMINI_API_KEY
@@ -187,6 +188,7 @@ class GoalGeneratorRepository {
                     log("Model $modelName returned null text, trying next...")
                 }
             } catch (e: Exception) {
+                // Catch ALL exceptions to prevent crash, including Quota or Network errors
                 val errorMessage = e.message ?: ""
                 log("Failed with model: $modelName. Error: $errorMessage")
                 
@@ -201,10 +203,11 @@ class GoalGeneratorRepository {
                 }
                 
                 lastException = e
+                // Continue to next model
             }
         }
         
-        // Prioritize Quota Error if it occurred
+        // Prioritize Quota Error if it occurred and no models succeeded
         if (quotaExceeded) {
              throw Exception("AI Usage Limit reached. Please wait a moment and try again.")
         }

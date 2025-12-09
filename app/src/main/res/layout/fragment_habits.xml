@@ -13,6 +13,8 @@
         android:background="@color/premium_dark_bg"
         android:elevation="4dp"
         app:title="My Habits"
+        app:navigationIcon="@drawable/ic_habits_toolbar"
+        app:navigationIconTint="@color/white"
         app:theme="@style/DarkToolbarTheme"
         app:titleTextColor="@color/white">
 

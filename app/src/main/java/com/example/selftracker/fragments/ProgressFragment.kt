@@ -32,7 +32,7 @@ class ProgressFragment : Fragment() {
     private lateinit var totalHabitsCount: TextView
     private lateinit var completedTodayCount: TextView
     private lateinit var successRate: TextView
-    private lateinit var currentMonthText: TextView
+
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -48,13 +48,11 @@ class ProgressFragment : Fragment() {
         totalHabitsCount = view.findViewById(R.id.total_habits_count)
         completedTodayCount = view.findViewById(R.id.completed_today_count)
         successRate = view.findViewById(R.id.success_rate)
-        currentMonthText = view.findViewById(R.id.current_month_text)
+
 
         database = SelfTrackerDatabase.getDatabase(requireContext())
 
-        // Set current month
-        val monthFormat = SimpleDateFormat("MMMM yyyy", Locale.getDefault())
-        currentMonthText.text = monthFormat.format(Date())
+
 
         loadProgress()
     }
