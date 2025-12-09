@@ -12,7 +12,7 @@ import com.example.selftracker.models.HabitLog
 
 @Database(
     entities = [Habit::class, HabitLog::class, Goal::class, GoalStep::class, GoalSubStep::class],
-    version = 1,  // Start fresh with version 1
+    version = 4,  // Bump for description
     exportSchema = false
 )
 abstract class SelfTrackerDatabase : RoomDatabase() {

@@ -51,6 +51,13 @@
         <item name="android:textColorHint">@color/hint_text</item>
     </style>
 
+    <style name="DarkToolbarTheme" parent="ThemeOverlay.MaterialComponents.Dark.ActionBar">
+        <item name="colorControlNormal">@color/white</item>
+        <item name="android:textColorPrimary">@color/white</item>
+        <item name="android:textColorSecondary">@color/gray_400</item>
+        <item name="actionMenuTextColor">@color/white</item>
+    </style>
+
     <!-- Alias for backward compatibility if 'Theme.SelfTracker' is used in Manifest -->
     <style name="Theme.SelfTracker" parent="AppTheme" />
 
@@ -117,6 +124,17 @@
         <item name="android:textSize">11sp</item>
         <item name="android:textStyle">normal</item>
         <item name="android:fontFamily">sans-serif</item>
+    </style>
+
+    <!-- High Contrast Popup Menu -->
+    <style name="Theme.SelfTracker.PopupOverlay" parent="ThemeOverlay.Material3.Light">
+        <item name="android:colorBackground">@color/gray_800</item> <!-- Dark Slate Background -->
+        <item name="android:textColor">@color/white</item> <!-- White Text -->
+        <item name="android:popupMenuStyle">@style/Widget.SelfTracker.PopupMenu</item>
+    </style>
+
+    <style name="Widget.SelfTracker.PopupMenu" parent="Widget.Material3.PopupMenu">
+        <item name="android:popupBackground">@drawable/popup_background</item>
     </style>
 
 </resources>

@@ -59,9 +59,9 @@ class MainActivity : AppCompatActivity() {
         fabAdd.visibility = View.VISIBLE
         
         // Setup Bottom Navigation Items
-        bottomNavigation.add(CurvedBottomNavigation.Model(ID_HABITS, "Habits", R.drawable.ic_habits))
-        bottomNavigation.add(CurvedBottomNavigation.Model(ID_GOALS, "Goals", R.drawable.ic_goals))
-        bottomNavigation.add(CurvedBottomNavigation.Model(ID_PROGRESS, "Progress", R.drawable.ic_progress))
+        bottomNavigation.add(CurvedBottomNavigation.Model(ID_HABITS, "Habits", R.drawable.ic_habits_nav))
+        bottomNavigation.add(CurvedBottomNavigation.Model(ID_GOALS, "Goals", R.drawable.ic_rocket_nav))
+        bottomNavigation.add(CurvedBottomNavigation.Model(ID_PROGRESS, "Progress", R.drawable.ic_progress_nav))
         
         // Default selected
         bottomNavigation.show(ID_HABITS, true)

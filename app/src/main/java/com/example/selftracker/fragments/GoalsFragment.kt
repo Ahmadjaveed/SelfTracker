@@ -86,9 +86,20 @@ class GoalsFragment : Fragment() {
         val nameText = view.findViewById<TextView>(R.id.goal_name)
         val statusText = view.findViewById<TextView>(R.id.goal_status_text)
         val progressBar = view.findViewById<com.google.android.material.progressindicator.LinearProgressIndicator>(R.id.goal_progress_bar)
-        val stepsContainer = view.findViewById<LinearLayout>(R.id.steps_container)
+        val stepsContainer = view.findViewById<com.google.android.flexbox.FlexboxLayout>(R.id.steps_container)
+        val iconView = view.findViewById<ImageView>(R.id.icon_target)
         
         nameText.text = goal.name
+        
+        // Load AI Icon if exists
+        android.util.Log.d("GoalsFragment", "Goal: ${goal.name}, IconPath: ${goal.localIconPath}")
+        if (goal.localIconPath != null) {
+            val drawable = loadIconFromFile(goal.localIconPath)
+            if (drawable != null) {
+                iconView.setImageDrawable(drawable)
+                iconView.imageTintList = null // Remove tint to show colors
+            }
+        }
 
         val progress = if (totalSteps > 0) (completedSteps.toFloat() / totalSteps.toFloat() * 100).toInt() else 0
         progressBar.progress = progress
@@ -97,13 +108,12 @@ class GoalsFragment : Fragment() {
 
         // Load steps and render as dots
         database.goalStepDao().getStepsByGoal(goal.goalId).observe(viewLifecycleOwner) { steps ->
-            stepsContainer.removeAllViews()
             steps.sortedBy { it.orderIndex }.forEachIndexed { index, step ->
                 addStepDot(stepsContainer, step, index + 1)
             }
         }
-
-
+        
+    
         if (completedSteps >= totalSteps && totalSteps > 0) {
             statusText.text = "Goal Completed! 🎉"
             statusText.setTextColor(ContextCompat.getColor(requireContext(), R.color.primary))
@@ -121,58 +131,29 @@ class GoalsFragment : Fragment() {
         goalsContainer.addView(view)
     }
 
-    private fun addStepDot(container: LinearLayout, step: com.example.selftracker.models.GoalStep, stepNumber: Int) {
+    private fun addStepDot(container: com.google.android.flexbox.FlexboxLayout, step: com.example.selftracker.models.GoalStep, stepNumber: Int) {
         val dotView = LayoutInflater.from(requireContext()).inflate(R.layout.item_step_dot, container, false)
 
         val dot = dotView.findViewById<View>(R.id.step_dot)
         val stepNumberText = dotView.findViewById<TextView>(R.id.step_number)
 
+        // Enhance Logic: Tick/Outline logic
         if (step.isCompleted) {
-            // Completed: Dark green node with checkmark, NO text inside (text below acts as label if needed, but usually hidden or generic)
-            // User request: "tick inside the circle... darker green tick circle"
-            // And presumably hide the number from the view below it if it's redundant / or keep it?
-            // "lighter green for incomplete steps"
-            
-            dot.setBackgroundResource(R.drawable.ic_step_completed)
-            stepNumberText.visibility = View.GONE // Hide the number "1", "2" below the dot as the dot itself is the main indicator? 
-            // Wait, the xml has `step_number` BELOW the dot. Usually steps are numbered. 
-            // If I look at the XML, `step_number` is below. 
-            // User didn't explicitly say "hide the number". 
-            // "instead of the simple circle i want you to use a tick insdie the circle" implies the CONTENT of the circle changes.
-            // The current `item_step_dot` has a View (circle) and a TextView (number) BELOW it. 
-            // Wait, looking at current XML:
-            /*
-            <View android:id="@+id/step_dot" ... />
-            <TextView android:id="@+id/step_number" ... below ... />
-            */
-            // Ideally, the number should be INSIDE the circle for pending, and TICK inside for completed?
-            // User: "lighter green for incomplete steps (and darker green tick circle for the completed tasks)"
-            // Existing XML has number BELOW. 
-            // If I want number INSIDE for incomplete, I need to use a TextView for the dot or a FrameLayout.
-            // Let's look at `item_step_dot.xml` again.
-            // It has `orientation="vertical"`. So number IS below.
-            // If user wants to "enhance the goal card", maybe the number logic is weird.
-            // Most step trackers have Number INSIDE the circle.
-            // I will Assume: Keep number below for now to minimize risk, unless I change XML to FrameLayout.
-            // BUT, if I just change the background, the number below is fine.
-            // Wait, for "tick inside the circle", `ic_step_completed` has a tick.
-            // For incomplete, it's just a light green circle.
-            // Step Number is separate.
-            // I'll keep the step number visible below for context, or hide it if it looks cluttered. 
-            // User request: "tick inside the circle".
-            // I'll stick to: Completed -> Tick icon. Pending -> Light circle.
-            // I will keep the number text below visible as it helps identify step order.
-            
-            stepNumberText.visibility = View.VISIBLE
-            stepNumberText.setTextColor(ContextCompat.getColor(requireContext(), R.color.primary)) 
+             dot.setBackgroundResource(R.drawable.ic_check_circle_filled) 
+             dot.backgroundTintList = android.content.res.ColorStateList.valueOf(ContextCompat.getColor(requireContext(), R.color.success))
+             stepNumberText.setTextColor(ContextCompat.getColor(requireContext(), R.color.success))
         } else {
-            // Incomplete: Light green circle
-            dot.setBackgroundResource(R.drawable.ic_step_pending)
-            stepNumberText.visibility = View.VISIBLE
-            stepNumberText.setTextColor(ContextCompat.getColor(requireContext(), R.color.gray_600))
+             dot.setBackgroundResource(R.drawable.ic_circle_outline)
+             dot.backgroundTintList = android.content.res.ColorStateList.valueOf(ContextCompat.getColor(requireContext(), R.color.gray_400))
+             stepNumberText.setTextColor(ContextCompat.getColor(requireContext(), R.color.gray_600))
         }
 
         stepNumberText.text = stepNumber.toString()
+        
+        // Interactive Tooltip
+        dotView.setOnClickListener {
+            Toast.makeText(requireContext(), "${stepNumber}. ${step.name}", Toast.LENGTH_SHORT).show()
+        }
 
         container.addView(dotView)
     }
@@ -180,38 +161,42 @@ class GoalsFragment : Fragment() {
     fun showAddGoalDialog() {
         val context = requireContext()
         val builder = AlertDialog.Builder(context)
-        val view = LayoutInflater.from(context).inflate(R.layout.dialog_add_goal, null)
+        val dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_add_goal, null)
 
-        val editName = view.findViewById<EditText>(R.id.edit_goal_name)
-        val editDescription = view.findViewById<EditText>(R.id.edit_goal_description)
-        val inputDescription = view.findViewById<com.google.android.material.textfield.TextInputLayout>(R.id.input_layout_description)
+        val editName = dialogView.findViewById<EditText>(R.id.edit_goal_name)
+        val editDescription = dialogView.findViewById<EditText>(R.id.edit_goal_description)
+        // No more TextInputLayout for description interactions
+        val btnEnhance = dialogView.findViewById<ImageView>(R.id.btn_enhance_description)
 
-        val btnSave = view.findViewById<Button>(R.id.btn_save_goal)
-        val btnCancel = view.findViewById<Button>(R.id.btn_cancel_goal)
+        val btnSave = dialogView.findViewById<Button>(R.id.btn_save_goal)
+        val btnClose = dialogView.findViewById<ImageView>(R.id.btn_close_dialog) // Changed from btn_cancel_goal button
         
         // AI UI Elements
-        val btnGenerate = view.findViewById<Button>(R.id.btn_generate_ai_steps)
-        val progressGen = view.findViewById<View>(R.id.progress_ai_generation)
-        val textStatus = view.findViewById<TextView>(R.id.text_ai_status)
-        val recyclerOptions = view.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.recycler_plan_options)
-        val recyclerSteps = view.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.recycler_generated_steps)
+        val btnGenerate = dialogView.findViewById<Button>(R.id.btn_generate_ai_steps)
+        val progressGen = dialogView.findViewById<View>(R.id.progress_ai_generation)
+        val textStatus = dialogView.findViewById<TextView>(R.id.text_ai_status)
+        val recyclerOptions = dialogView.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.recycler_plan_options)
+        val recyclerSteps = dialogView.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.recycler_generated_steps)
         
         recyclerSteps.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(context)
         recyclerOptions.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(context)
         
         var generatedSteps: List<com.example.selftracker.models.GeneratedStep> = emptyList()
 
-        builder.setView(view)
+        builder.setView(dialogView)
+        builder.setCancelable(true)
         val dialog = builder.create()
+        dialog.setCanceledOnTouchOutside(true)
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
 
         // Handle Magic Wand Click (Enhance Description)
-        inputDescription.setEndIconOnClickListener {
+        btnEnhance.setOnClickListener {
             val originalText = editDescription.text.toString().trim()
             if (originalText.isNotEmpty()) {
                 textStatus.text = "Enhancing description..."
                 textStatus.visibility = View.VISIBLE
-                inputDescription.isEnabled = false
+                btnEnhance.isEnabled = false
+                btnEnhance.imageAlpha = 128
 
                 viewLifecycleOwner.lifecycleScope.launch {
                     try {
@@ -219,14 +204,16 @@ class GoalsFragment : Fragment() {
                         val enhanced = repository.enhanceGoalDescription(originalText)
                         
                         withContext(Dispatchers.Main) {
-                            inputDescription.isEnabled = true
+                            btnEnhance.isEnabled = true
+                            btnEnhance.imageAlpha = 255
                             textStatus.visibility = View.GONE
                             editDescription.setText(enhanced)
                             Toast.makeText(context, "Description enhanced! ✨", Toast.LENGTH_SHORT).show()
                         }
                     } catch (e: Exception) {
                         withContext(Dispatchers.Main) {
-                            inputDescription.isEnabled = true
+                            btnEnhance.isEnabled = true
+                            btnEnhance.imageAlpha = 255
                             textStatus.visibility = View.GONE
                             Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_LONG).show()
                         }
@@ -242,6 +229,10 @@ class GoalsFragment : Fragment() {
             val description = editDescription.text.toString().trim()
             
             if (name.isNotEmpty()) {
+                // Hide keyboard
+                val imm = requireContext().getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
+                imm.hideSoftInputFromWindow(dialogView.windowToken, 0)
+                
                 btnGenerate.isEnabled = false
                 progressGen.visibility = View.VISIBLE
                 textStatus.text = "Drafting strategies..."
@@ -272,15 +263,32 @@ class GoalsFragment : Fragment() {
                                     
                                     try {
                                         val generatedGoal = repository.generateGoal(prompt, selectedOption.strategy)
+                                        
+                                        // Generate Icon
+                                        withContext(Dispatchers.Main) { textStatus.text = "Designing icon..." }
+                                        val iconXml = repository.generateGoalIcon(generatedGoal.goalTitle)
+                                        val iconFileName = "goal_icon_${System.currentTimeMillis()}.xml"
+                                        val iconFile = java.io.File(requireContext().filesDir, iconFileName)
+                                        iconFile.writeText(iconXml)
+                                        
                                         withContext(Dispatchers.Main) {
                                             btnGenerate.isEnabled = true
                                             progressGen.visibility = View.GONE
                                             textStatus.visibility = View.GONE
                                             
+                                            val layoutSteps = dialogView.findViewById<LinearLayout>(R.id.layout_generated_steps) // Dynamically find view
+                                            
+                                            // Auto-fill the optimized title
+                                            editName.setText(generatedGoal.goalTitle)
+                                            editName.tag = iconFile.absolutePath // Stash path
+                                            
+                                            // FIX: Assign to outer variable so it can be saved
                                             generatedSteps = generatedGoal.steps
+                                            
+                                            layoutSteps.visibility = View.VISIBLE
                                             recyclerSteps.visibility = View.VISIBLE
                                             recyclerSteps.adapter = AiStepsAdapter(generatedSteps)
-                                            Toast.makeText(context, "Plan ready! Review steps below.", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, "Plan ready! Title updated.", Toast.LENGTH_SHORT).show()
                                         }
                                     } catch (e: Exception) {
                                          withContext(Dispatchers.Main) {
@@ -311,43 +319,61 @@ class GoalsFragment : Fragment() {
         btnSave.setOnClickListener {
             val name = editName.text.toString().trim()
             if (name.isNotEmpty()) {
+                val iconPath = editName.tag as? String
                 val goal = Goal(
                     name = name,
-                    description = editDescription.text.toString().trim().takeIf { it.isNotEmpty() }
+                    description = editDescription.text.toString().trim().takeIf { it.isNotEmpty() },
+                    localIconPath = iconPath
                 )
                 
                 viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-                    // 1. Save Goal
-                    val goalId = database.goalDao().insertGoal(goal)
-                    
-                    // 2. Save Generated Steps (if any)
-                    if (generatedSteps.isNotEmpty()) {
-                        generatedSteps.forEachIndexed { index, genStep ->
-                            val step = com.example.selftracker.models.GoalStep(
-                                goalId = goalId,
-                                name = genStep.stepName,
-                                orderIndex = index,
-                                duration = genStep.durationValue,
-                                durationUnit = genStep.durationUnit
-                            )
-                            val stepId = database.goalStepDao().insertGoalStep(step)
-                            
-                            // 3. Save Substeps
-                            genStep.substeps.forEachIndexed { subIndex, subName ->
-                                 val subStep = com.example.selftracker.models.GoalSubStep(
-                                     stepId = stepId,
-                                     name = subName,
-                                     orderIndex = subIndex
-                                 )
-                                 database.goalSubStepDao().insertGoalSubStep(subStep)
+                    try {
+                        // 1. Save Goal
+                        val goalId = database.goalDao().insertGoal(goal)
+                        android.util.Log.d("GoalsFragment", "Saved Goal ID: $goalId")
+                        
+                        // 2. Save Generated Steps (if any)
+                        android.util.Log.d("GoalsFragment", "Generated Steps Count: ${generatedSteps.size}")
+                        
+                        if (generatedSteps.isNotEmpty()) {
+                            generatedSteps.forEachIndexed { index, genStep ->
+                                    val step = com.example.selftracker.models.GoalStep(
+                                        goalId = goalId,
+                                        name = genStep.stepName,
+                                        description = genStep.description,
+                                        orderIndex = index,
+                                        duration = genStep.durationValue,
+                                        durationUnit = genStep.durationUnit
+                                    )
+                                val stepId = database.goalStepDao().insertGoalStep(step)
+                                android.util.Log.d("GoalsFragment", "Saved Step ID: $stepId")
+                                
+                        // 3. Save Substeps
+                        val subStepsList = genStep.substeps ?: emptyList() // Safety check
+                        
+                        subStepsList.forEachIndexed { subIndex, subStepData ->
+                             val subStep = com.example.selftracker.models.GoalSubStep(
+                                 stepId = stepId,
+                                 name = subStepData.name,
+                                 orderIndex = subIndex,
+                                 duration = subStepData.durationValue,
+                                 durationUnit = subStepData.durationUnit
+                             )
+                             database.goalSubStepDao().insertGoalSubStep(subStep)
+                        }
                             }
                         }
-                    }
 
-                    withContext(Dispatchers.Main) {
-                        dialog.dismiss()
-                        val message = if (generatedSteps.isNotEmpty()) "Goal & Roadmap Created!" else "Goal Added!"
-                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                        withContext(Dispatchers.Main) {
+                            dialog.dismiss()
+                            val message = if (generatedSteps.isNotEmpty()) "Goal & Roadmap Created!" else "Goal Added!"
+                            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("GoalsFragment", "Error saving goal", e)
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(context, "Error saving: ${e.message}", Toast.LENGTH_LONG).show()
+                        }
                     }
                 }
             } else {
@@ -355,7 +381,7 @@ class GoalsFragment : Fragment() {
             }
         }
 
-        btnCancel.setOnClickListener { dialog.dismiss() }
+        btnClose.setOnClickListener { dialog.dismiss() }
         dialog.show()
     }
 
@@ -391,6 +417,7 @@ class GoalsFragment : Fragment() {
         inner class ViewHolder(view: View) : androidx.recyclerview.widget.RecyclerView.ViewHolder(view) {
             val stepNumber: TextView = view.findViewById(R.id.text_step_number)
             val stepName: TextView = view.findViewById(R.id.text_step_name)
+            val stepDescription: TextView = view.findViewById(R.id.text_step_description)
             val duration: TextView = view.findViewById(R.id.text_step_duration)
             val substeps: TextView = view.findViewById(R.id.text_substeps)
         }
@@ -404,17 +431,54 @@ class GoalsFragment : Fragment() {
             val step = steps[position]
             holder.stepNumber.text = (position + 1).toString()
             holder.stepName.text = step.stepName
+            holder.stepDescription.text = step.description
             holder.duration.text = "${step.durationValue} ${step.durationUnit}"
             
-            if (step.substeps.isNotEmpty()) {
+            val subSteps = step.substeps ?: emptyList()
+            if (subSteps.isNotEmpty()) {
                 holder.substeps.visibility = View.VISIBLE
-                holder.substeps.text = step.substeps.joinToString("\n• ", prefix = "• ")
+                holder.substeps.text = subSteps.joinToString("\n• ", prefix = "• ")
             } else {
                 holder.substeps.visibility = View.GONE
             }
         }
 
         override fun getItemCount() = steps.size
+    }
+
+    private fun loadIconFromFile(path: String?): android.graphics.drawable.Drawable? {
+        if (path == null) return null
+        val file = java.io.File(path)
+        if (!file.exists()) {
+            android.util.Log.e("GoalsFragment", "Icon file not found: $path")
+            return null
+        }
+        
+        return try {
+            val fis = java.io.FileInputStream(file)
+            val parser = android.util.Xml.newPullParser()
+            parser.setInput(fis, "UTF-8")
+            
+            // Skip to first tag
+            var type = parser.eventType
+            while (type != org.xmlpull.v1.XmlPullParser.START_TAG && type != org.xmlpull.v1.XmlPullParser.END_DOCUMENT) {
+                type = parser.next()
+            }
+            
+            if (type != org.xmlpull.v1.XmlPullParser.START_TAG) {
+                android.util.Log.e("GoalsFragment", "No start tag found")
+                return null
+            }
+
+            android.util.Log.d("GoalsFragment", "Parsing icon from $path")
+            
+            // Use VectorDrawableCompat manually
+            androidx.vectordrawable.graphics.drawable.VectorDrawableCompat.createFromXml(resources, parser, null)
+            
+        } catch (e: Exception) {
+            android.util.Log.e("GoalsFragment", "Error loading icon", e)
+            null
+        }
     }
 
 }

@@ -2,8 +2,21 @@ import urllib.request
 import json
 import ssl
 
-api_key = "AIzaSyDBEPLz2a6NURADqeMzRMzOEpRetGWbHG8"
-model = "gemini-pro"
+def get_api_key():
+    try:
+        with open('local.properties', 'r') as f:
+            for line in f:
+                if 'GEMINI_API_KEY' in line:
+                    key = line.split('=')[1].strip()
+                    # Remove potential quotes
+                    return key.replace('"', '').replace("'", "")
+    except Exception as e:
+        print(f"Error reading local.properties: {e}")
+        return None
+
+api_key = get_api_key()
+# Try a stable model that is likely to exist for everyone
+model = "gemini-1.5-flash"
 url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
 
 headers = {

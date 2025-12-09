@@ -129,6 +129,8 @@
     <color name="gray_500">#64748B</color>
     <color name="gray_600">#475569</color>
     <color name="gray_700">#334155</color>
+    <color name="gray_800">#1E293B</color>
+    <color name="gray_900">#0F172A</color>
 
     <!-- NEW: Step Visualization Colors -->
     <color name="step_node_line">#CBD5E1</color> <!-- Slate 300 -->
@@ -144,5 +146,31 @@
     <color name="accent">@color/secondary</color>
     <color name="text_on_primary">@color/on_primary</color>
     <color name="text_on_surface">@color/on_surface</color>
+
+    <!-- PREMIUM DARK THEME PALETTE -->
+    <color name="premium_dark_bg">#0F172A</color>       <!-- Rich Night Blue -->
+    <color name="premium_surface">#1E293B</color>       <!-- Slate 800 -->
+    <color name="premium_surface_light">#334155</color> <!-- Slate 700 -->
+    
+    <!-- Ultra Gradients -->
+    <color name="gradient_start">#8B5CF6</color> <!-- Violet 500 -->
+    <color name="gradient_center">#6366F1</color> <!-- Indigo 500 -->
+    <color name="gradient_end">#3B82F6</color>   <!-- Blue 500 -->
+    
+    <!-- Text -->
+    <color name="text_primary_dark">#F8FAFC</color>   <!-- Slate 50 -->
+    <color name="text_secondary_dark">#94A3B8</color> <!-- Slate 400 -->
+    <color name="text_hint_dark">#64748B</color>      <!-- Slate 500 -->
+    
+    <!-- Glass Effect -->
+    <color name="glass_fill">#1AFFFFFF</color>        <!-- 10% White -->
+    <color name="glass_stroke">#33FFFFFF</color>      <!-- 20% White -->
+
+    <!-- REDESIGN: Clean Dark/Blue Palette -->
+    <color name="input_bg_dark">#1E293B</color>       <!-- Dark Gray/Slate 800 -->
+    <color name="input_stroke_focused">#3B82F6</color> <!-- Bright Blue -->
+    <color name="accent_blue">#3B82F6</color>         <!-- Bright Blue -->
+    <color name="accent_blue_glow">#4D3B82F6</color>  <!-- 30% Blue for Glow/Ripple -->
+    <color name="dialog_bg_dark">#0F172A</color>      <!-- Almost Black/Slate 900 -->
 
 </resources>

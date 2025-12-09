@@ -98,35 +98,99 @@ class GoalDetailFragment : Fragment() {
             goalTitle.text = goal.name
             goalDescription.text = goal.description ?: "No description"
 
-            // Observe steps on main thread
-            database.goalStepDao().getStepsByGoal(goalId).observe(viewLifecycleOwner) { steps ->
-                updateStepsUI(steps)
+            // Observe steps and substeps to calculate weighted progress
+            val stepsLiveData = database.goalStepDao().getStepsByGoal(goalId)
+            val subStepsLiveData = database.goalSubStepDao().getSubStepsByGoal(goalId)
+
+            // MediatorLiveData or combined observation logic
+            // Since we don't have MediatorLiveData, we can observe both and trigger update
+            // However, nested observation is messy.
+            // Better approach: Observe steps, and inside, observe substeps for the whole goal.
+            
+            stepsLiveData.observe(viewLifecycleOwner) { steps ->
+                subStepsLiveData.observe(viewLifecycleOwner) { allSubSteps ->
+                    updateStepsUI(steps, allSubSteps)
+                }
             }
         }
     }
 
-    private fun updateStepsUI(steps: List<GoalStep>) {
+    private fun updateStepsUI(steps: List<GoalStep>, allSubSteps: List<GoalSubStep> = emptyList()) {
+        // Save scroll position
+        val scrollView = view?.findViewById<androidx.core.widget.NestedScrollView>(R.id.details_scroll_view)
+        val savedScrollY = scrollView?.scrollY ?: 0
+
         stepsTreeContainer.removeAllViews()
 
-        val totalSteps = steps.size
-        val completedSteps = steps.count { it.isCompleted }
-
-        // Calculate progress
-        val progress = if (totalSteps > 0) (completedSteps.toFloat() / totalSteps.toFloat() * 100).toInt() else 0
-
-        progressBar.progress = progress
-        progressText.text = "$progress%"
-        completedCount.text = "$completedSteps completed"
-        totalCount.text = "$totalSteps total"
+        calculateWeightedProgress(steps, allSubSteps)
 
         steps.sortedBy { it.orderIndex }.forEachIndexed { index, step ->
             addStepToTree(step, index)
+        }
+        
+        // Restore scroll position
+        scrollView?.post {
+            scrollView.scrollY = savedScrollY
         }
 
         if (steps.isEmpty()) {
             showEmptyStepsState()
         }
     }
+
+    private fun calculateWeightedProgress(steps: List<GoalStep>, allSubSteps: List<GoalSubStep>) {
+        var totalDuration = 0.0
+        var completedDuration = 0.0
+
+        steps.forEach { step ->
+            val stepSubSteps = allSubSteps.filter { it.stepId == step.stepId }
+            
+            if (stepSubSteps.isNotEmpty()) {
+                // Leaf nodes are substeps
+                stepSubSteps.forEach { subStep ->
+                    val duration = getDurationInDays(subStep.duration, subStep.durationUnit)
+                    totalDuration += duration
+                    if (subStep.isCompleted) {
+                        completedDuration += duration
+                    }
+                }
+            } else {
+                // Leaf node is the step itself
+                val duration = getDurationInDays(step.duration, step.durationUnit)
+                totalDuration += duration
+                if (step.isCompleted) {
+                    completedDuration += duration
+                }
+            }
+        }
+
+        val progress = if (totalDuration > 0) (completedDuration / totalDuration * 100).toInt() else 0
+
+        progressBar.progress = progress
+        progressText.text = "$progress%"
+        
+        // Count total leaf tasks for display or keep simple Count
+        // User asked for "progress percentage based on days".
+        // The "X completed Y total" text might still refer to steps?
+        // Let's update it to show "Tasks" or keep it as steps count?
+        // User didn't explicitly ask to change the count text, just the percentage logic.
+        // But "X completed" usually refers to the progress bar.
+        // If progress is 50% (days), but 1/10 steps done, it matches.
+        
+        val completedStepsCount = steps.count { it.isCompleted }
+        completedCount.text = "$completedStepsCount steps done"
+        totalCount.text = "${steps.size} total steps"
+    }
+
+    private fun getDurationInDays(duration: Int, unit: String): Double {
+        return when (unit.lowercase()) {
+            "weeks" -> duration * 7.0
+            "months" -> duration * 30.0
+            else -> duration.toDouble() // days or default
+        }
+    }
+
+    private val expandedStepIds = mutableSetOf<Long>()
 
     private fun addStepToTree(step: GoalStep, stepIndex: Int) {
         val stepView = LayoutInflater.from(requireContext()).inflate(R.layout.item_step_tree, stepsTreeContainer, false)
@@ -163,18 +227,27 @@ class GoalDetailFragment : Fragment() {
             }
         }
 
+        // Restore expansion state
+        val isExpanded = expandedStepIds.contains(step.stepId)
+        substepsContainer.visibility = if (isExpanded) View.VISIBLE else View.GONE
+        btnExpand.setImageResource(if (isExpanded) R.drawable.ic_expand_less else R.drawable.ic_expand_more)
+
         // Load and display substeps
         database.goalSubStepDao().getSubStepsByStep(step.stepId).observe(viewLifecycleOwner) { substeps ->
             updateSubstepsUI(substepsContainer, substeps, stepProgress, stepProgressBar, step, stepCheckbox)
         }
 
-        // Expand/collapse functionality
-        var isExpanded = false
         // Expand/collapse logic
         val toggleExpansion = {
-            isExpanded = !isExpanded
-            substepsContainer.visibility = if (isExpanded) View.VISIBLE else View.GONE
-            btnExpand.setImageResource(if (isExpanded) R.drawable.ic_expand_less else R.drawable.ic_expand_more)
+            if (expandedStepIds.contains(step.stepId)) {
+                expandedStepIds.remove(step.stepId)
+                substepsContainer.visibility = View.GONE
+                btnExpand.setImageResource(R.drawable.ic_expand_more)
+            } else {
+                expandedStepIds.add(step.stepId)
+                substepsContainer.visibility = View.VISIBLE
+                btnExpand.setImageResource(R.drawable.ic_expand_less)
+            }
         }
 
         btnExpand.setOnClickListener { toggleExpansion() }
@@ -207,6 +280,17 @@ class GoalDetailFragment : Fragment() {
         container.removeAllViews()
 
         val totalSubsteps = substeps.size
+        
+        // Hide checkbox if substeps exist
+        if (totalSubsteps > 0) {
+            stepCheckbox.visibility = View.INVISIBLE
+            // Also ensure it's not clickable to avoid accidental toggles if layout shifts
+            stepCheckbox.isEnabled = false 
+        } else {
+            stepCheckbox.visibility = View.VISIBLE
+            stepCheckbox.isEnabled = true
+        }
+
         val completedSubsteps = substeps.count { it.isCompleted }
 
         stepProgress.text = "$completedSubsteps/$totalSubsteps done"
@@ -264,16 +348,19 @@ class GoalDetailFragment : Fragment() {
             showSubstepMenu(view, substep)
         }
 
-        // Substep click listener
+        // Substep click listener - Now toggles checkbox as requested
         substepView.setOnClickListener {
-            showSubstepDetailsDialog(substep)
+             // Invert state and let valid listener handle DB update
+             substepStatus.isChecked = !substepStatus.isChecked
         }
 
         container.addView(substepView)
     }
 
     private fun showSubstepMenu(view: View, substep: GoalSubStep) {
-        val popup = android.widget.PopupMenu(requireContext(), view)
+        // Use ContextThemeWrapper to apply High Contrast Theme
+        val wrapper = android.view.ContextThemeWrapper(requireContext(), R.style.Theme_SelfTracker_PopupOverlay)
+        val popup = android.widget.PopupMenu(wrapper, view)
         popup.menuInflater.inflate(R.menu.substep_menu, popup.menu)
 
         popup.setOnMenuItemClickListener { item ->
@@ -553,10 +640,10 @@ class GoalDetailFragment : Fragment() {
     }
     private fun showEditGoalDialog() {
         val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_add_goal, null)
-        val editGoalName = dialogView.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.edit_goal_name)
-        val editGoalDescription = dialogView.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.edit_goal_description)
+        val editGoalName = dialogView.findViewById<EditText>(R.id.edit_goal_name)
+        val editGoalDescription = dialogView.findViewById<EditText>(R.id.edit_goal_description)
         val btnSave = dialogView.findViewById<Button>(R.id.btn_save_goal)
-        val btnCancel = dialogView.findViewById<Button>(R.id.btn_cancel_goal)
+        val btnClose = dialogView.findViewById<ImageView>(R.id.btn_close_dialog)
 
         // Pre-fill existing data
         editGoalName.setText(goal.name)
@@ -581,6 +668,12 @@ class GoalDetailFragment : Fragment() {
                         description = if (description.isNotEmpty()) description else null
                     )
                     database.goalDao().updateGoal(updatedGoal)
+                    
+                    withContext(Dispatchers.Main) {
+                         // Update UI
+                         goalTitle.text = updatedGoal.name
+                         goalDescription.text = updatedGoal.description ?: "No description"
+                    }
                 }
                 dialog.dismiss()
             } else {
@@ -588,7 +681,7 @@ class GoalDetailFragment : Fragment() {
             }
         }
 
-        btnCancel.setOnClickListener {
+        btnClose.setOnClickListener {
             dialog.dismiss()
         }
 

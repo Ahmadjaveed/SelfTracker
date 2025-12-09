@@ -1,176 +1,220 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:background="@drawable/dialog_background"> <!-- Ensure this exists or use a color/shape -->
+    android:background="@drawable/bg_dialog_dark_card"
+    android:padding="24dp">
 
-    <!-- Header Section -->
-    <LinearLayout
+    <!-- Header -->
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@drawable/dialog_header_bg"
-        android:gravity="center"
-        android:orientation="vertical"
-        android:padding="24dp">
-
-        <ImageView
-            android:layout_width="56dp"
-            android:layout_height="56dp"
-            android:src="@drawable/ic_goal_target" 
-            android:layout_marginBottom="8dp"
-            android:contentDescription="Goal Icon" />
+        android:layout_marginBottom="24dp">
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_gravity="center"
             android:text="New Goal"
-            android:textAllCaps="true"
-            android:letterSpacing="0.1"
-            android:textAppearance="?attr/textAppearanceTitleMedium"
             android:textColor="@color/white"
-            android:textStyle="bold" />
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.05" />
 
-    </LinearLayout>
+        <ImageView
+            android:id="@+id/btn_close_dialog"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_gravity="start|center_vertical"
+            android:src="@drawable/ic_arrow_back"
+            app:tint="@color/text_secondary_dark"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:focusable="true" 
+            android:contentDescription="Close"/>
+    </FrameLayout>
 
-    <!-- Content Section -->
-    <LinearLayout
+    <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="24dp">
+        android:fillViewport="true">
 
-        <com.google.android.material.textfield.TextInputLayout
-            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            android:textColorHint="@color/gray_400"
-            app:hintTextColor="@color/primary"
-            app:boxStrokeColor="@color/primary"
-            android:hint="Goal Name">
-
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/edit_goal_name"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:textColor="@color/white"
-                android:textColorHint="@color/gray_400"
-                android:inputType="textCapSentences" />
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <com.google.android.material.textfield.TextInputLayout
-            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-            android:id="@+id/input_layout_description"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
-            android:textColorHint="@color/gray_400"
-            app:hintTextColor="@color/primary"
-            app:boxStrokeColor="@color/primary"
-            app:endIconMode="custom"
-            app:endIconDrawable="@drawable/ic_magic_wand"
-            app:endIconTint="@color/primary"
-            app:endIconContentDescription="Enhance with AI"
-            android:hint="Description (Optional)">
-
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/edit_goal_description"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="textMultiLine"
-                android:textColor="@color/white"
-                android:textColorHint="@color/gray_400"
-                android:minLines="3"
-                android:gravity="top|start" />
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <!-- AI Generation Section -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:layout_marginBottom="16dp">
+            android:orientation="vertical">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_generate_ai_steps"
-                style="@style/Widget.Material3.Button.OutlinedButton"
+            <!-- Goal Name -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:background="@drawable/bg_input_dark"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:layout_marginBottom="16dp">
+
+                <ImageView
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:src="@drawable/ic_rocket_img"
+                    android:scaleType="fitCenter"
+                    android:contentDescription="Goal Icon" />
+
+                <EditText
+                    android:id="@+id/edit_goal_name"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@null"
+                    android:layout_marginStart="16dp"
+                    android:hint="Goal Name"
+                    android:textCursorDrawable="@null"
+                    android:textColor="@color/text_primary_dark"
+                    android:textColorHint="@color/text_hint_dark"
+                    android:textSize="16sp"
+                    android:inputType="textCapSentences"
+                    android:maxLines="1" />
+            </LinearLayout>
+
+            <!-- Description with Magic Wand -->
+            <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="✨ Auto-Generate Steps"
-                android:textColor="@color/primary"
-                app:strokeColor="@color/primary"
-                app:icon="@drawable/ic_goal_target"
-                app:iconTint="@color/primary"/>
+                android:layout_marginBottom="16dp">
 
-            <ProgressBar
-                android:id="@+id/progress_ai_generation"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:visibility="gone"
-                android:layout_marginTop="8dp"/>
+                <EditText
+                    android:id="@+id/edit_goal_description"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="120dp"
+                    android:gravity="top|start"
+                    android:background="@drawable/bg_input_dark"
+                    android:drawableStart="@drawable/ic_document_minimal" 
+                    android:drawablePadding="16dp"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="48dp" 
+                    android:paddingTop="12dp"
+                    android:paddingBottom="12dp"
+                    android:hint="Description (Optional)"
+                    android:textCursorDrawable="@null"
+                    android:textColor="@color/text_primary_dark"
+                    android:textColorHint="@color/text_hint_dark"
+                    android:textSize="14sp"
+                    android:inputType="textMultiLine|textCapSentences"
+                    android:maxLines="5" 
+                    android:drawableTint="@color/text_secondary_dark"/>
 
-            <TextView
-                android:id="@+id/text_ai_status"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:text="Designing your roadmap..."
-                android:textColor="@color/gray_400"
-                android:textSize="12sp"
-                android:visibility="gone"
-                android:layout_marginBottom="8dp"/>
+                <!-- Magic Wand Button inside Input -->
+                <ImageView
+                    android:id="@+id/btn_enhance_description"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="end|top"
+                    android:layout_marginTop="16dp"
+                    android:layout_marginEnd="12dp"
+                    android:src="@drawable/ic_magic_wand"
+                    app:tint="@color/accent_blue"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:tooltipText="Enhance with AI"/>
+            </FrameLayout>
 
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/recycler_plan_options"
+            <!-- AI Generation Section (Preserved structure, styled) -->
+            <LinearLayout
+                android:id="@+id/layout_generated_steps"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:nestedScrollingEnabled="false"
-                tools:listitem="@layout/item_ai_plan_option"
-                android:visibility="gone"/>
+                android:orientation="vertical"
+                android:layout_marginBottom="24dp"
+                android:background="@drawable/bg_input_dark"
+                android:padding="16dp">
+                
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="12dp">
+                    
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:src="@drawable/ic_magic_wand"
+                        app:tint="@color/accent_blue"
+                        android:layout_marginEnd="8dp"/>
 
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/recycler_generated_steps"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:nestedScrollingEnabled="false"
-                tools:listitem="@layout/item_ai_step_preview"
-                android:visibility="gone"/>
+                    <TextView
+                         android:layout_width="wrap_content"
+                         android:layout_height="wrap_content"
+                         android:text="AI Roadmap Generator"
+                         android:textColor="@color/white"
+                         android:textStyle="bold"
+                         android:textSize="14sp"/>
+                </LinearLayout>
+                
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_generate_ai_steps"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Auto-Generate Steps ✨"
+                    android:textColor="@color/accent_blue"
+                    app:strokeColor="@color/accent_blue"
+                    app:strokeWidth="1dp"
+                    android:layout_marginBottom="8dp"/>
 
-        </LinearLayout>
+                <ProgressBar
+                    android:id="@+id/progress_ai_generation"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="center"
+                    android:layout_marginBottom="8dp"
+                    android:visibility="gone" 
+                    android:indeterminateTint="@color/accent_blue"/>
 
-        <!-- Actions -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="end">
+                <TextView
+                    android:id="@+id/text_ai_status"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:textColor="@color/text_secondary_dark"
+                    android:textSize="12sp"
+                    android:layout_marginBottom="8dp"
+                    android:visibility="gone"/>
 
-            <Button
-                android:id="@+id/btn_cancel_goal"
-                style="@style/Widget.Material3.Button.TextButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Cancel"
-                android:textColor="@color/gray_400"
-                android:layout_marginEnd="8dp" />
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/recycler_plan_options"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:contentDescription="Plan Options"
+                    android:visibility="gone"/>
+                    
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/recycler_generated_steps"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                     android:contentDescription="Generated Steps"
+                    android:visibility="gone"/>
+            </LinearLayout>
 
+            <!-- Save Button -->
             <Button
                 android:id="@+id/btn_save_goal"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:backgroundTint="@color/primary"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
                 android:text="Create Goal"
+                android:textAllCaps="false"
+                android:textSize="16sp"
+                android:textStyle="bold"
                 android:textColor="@color/white"
-                android:paddingHorizontal="24dp" />
+                android:background="@drawable/bg_button_blue"
+                app:backgroundTint="@null" />
 
         </LinearLayout>
-
-    </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
 
 </LinearLayout>

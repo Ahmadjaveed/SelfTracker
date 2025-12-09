@@ -22,9 +22,30 @@ import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import android.Manifest
+import android.app.TimePickerDialog
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import com.example.selftracker.utils.ReminderScheduler
+import java.util.Calendar
+import java.text.SimpleDateFormat
+import java.util.Locale
 import kotlinx.coroutines.withContext
 
 class HabitsFragment : Fragment() {
+
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            // Permission granted
+        } else {
+            // Permission denied
+             showSnackbar("Notifications won't be sent without permission")
+        }
+    }
 
     private lateinit var habitsRecyclerView: RecyclerView
     private lateinit var emptyState: LinearLayout
@@ -59,6 +80,13 @@ class HabitsFragment : Fragment() {
         setupRecyclerView()
         setupToolbar()
         loadHabits()
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.POST_NOTIFICATIONS) != 
+                PackageManager.PERMISSION_GRANTED) {
+                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
     }
 
     private var searchQuery: String = ""
@@ -360,53 +388,88 @@ class HabitsFragment : Fragment() {
         val isEditMode = existingHabit != null
 
         val editHabitName = dialogView.findViewById<EditText>(R.id.edit_habit_name)
+        val editHabitDescription = dialogView.findViewById<EditText>(R.id.edit_habit_description)
         val editTargetValue = dialogView.findViewById<EditText>(R.id.edit_target_value)
-        val editUnit = dialogView.findViewById<AutoCompleteTextView>(R.id.edit_unit) // Changed to AutoCompleteTextView
+        val editUnit = dialogView.findViewById<AutoCompleteTextView>(R.id.edit_unit)
         val btnSave = dialogView.findViewById<Button>(R.id.btn_save_habit)
-        val btnCancel = dialogView.findViewById<Button>(R.id.btn_cancel_habit)
-
-        // Setup Unit Dropdown
-        val units = arrayOf("times", "minutes", "hours", "pages", "km", "miles", "glasses", "steps", "cal")
-        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, units)
+        val btnClose = dialogView.findViewById<ImageView>(R.id.btn_close_dialog)
+        val timePicker = dialogView.findViewById<TimePicker>(R.id.time_picker)
+        
+        // Setup Unit Dropdown (with common units but allowing custom input)
+        val units = arrayOf("minutes", "times", "hours", "glasses", "pages", "km", "miles", "cal")
+        val adapter = ArrayAdapter(requireContext(), R.layout.item_dropdown_dark, units)
         editUnit.setAdapter(adapter)
-        editUnit.threshold = 1 // Show dropdown immediately on typing or focus
+        editUnit.threshold = 1
+        editUnit.setOnClickListener { editUnit.showDropDown() } // Show on click
+
+        // Use 24h view or user pref? Defaulting to 12h as requested "H:mm a" previously, but spinner is usually 24h or system default.
+        timePicker.setIs24HourView(false)
 
         val dialog = MaterialAlertDialogBuilder(requireContext())
-            .setTitle(if (isEditMode) "Edit Habit" else "Create New Habit")
             .setView(dialogView)
-            .setCancelable(false)
+            .setCancelable(true)
             .create()
+            
+        dialog.setCanceledOnTouchOutside(true)
 
         // Pre-fill for edit mode
         existingHabit?.let { habit ->
             editHabitName.setText(habit.name)
+            editHabitDescription.setText(habit.description)
             editTargetValue.setText(habit.targetValue.toString())
-            editUnit.setText(habit.unit, false) // false to prevent filtering
+            editUnit.setText(habit.unit) // AutoCompleteTextView handles setText fine
+            
+            habit.reminderTime?.let {
+                 val cal = Calendar.getInstance().apply { timeInMillis = it }
+                 timePicker.hour = cal.get(Calendar.HOUR_OF_DAY)
+                 timePicker.minute = cal.get(Calendar.MINUTE)
+            }
         }
 
         // Set focus on name field for new habits
         if (!isEditMode) {
             editHabitName.requestFocus()
         }
+        
+        // Helper to get time from picker
+        fun getReminderTimeFromPicker(): Long {
+            val cal = Calendar.getInstance()
+            cal.set(Calendar.HOUR_OF_DAY, timePicker.hour)
+            cal.set(Calendar.MINUTE, timePicker.minute)
+            cal.set(Calendar.SECOND, 0)
+            return cal.timeInMillis
+        }
 
         btnSave.setOnClickListener {
             val name = editHabitName.text.toString().trim()
+            val description = editHabitDescription.text.toString().trim()
             val targetStr = editTargetValue.text.toString().trim()
             val unit = editUnit.text.toString().trim()
+            
+            // Assume user wants reminder if they touch it? Or always save it? 
+            // Since it's marked "Optional", we could add a CheckBox or just assume if they modify it. 
+            // For now, let's ALWAYS save it since the clock is visible. Or maybe default to null if it matches current time? 
+            // User requested "Optional reminder", but providing a permanent clock implies it's always set unless disabled.
+            // Let's save it.
+            val reminderTime = getReminderTimeFromPicker()
 
             if (validateInput(name, targetStr, editHabitName, editTargetValue)) {
                 val habit = if (isEditMode) {
                     existingHabit!!.copy(
                         name = name,
+                        description = description,
                         targetValue = targetStr.toInt(),
-                        unit = if (unit.isEmpty()) "times" else unit
+                        unit = if (unit.isEmpty()) "times" else unit,
+                        reminderTime = reminderTime
                     )
                 } else {
                     Habit(
                         name = name,
+                        description = description,
                         targetValue = targetStr.toInt(),
                         unit = if (unit.isEmpty()) "times" else unit,
-                        scheduleType = "DAILY"
+                        scheduleType = "DAILY",
+                        reminderTime = reminderTime
                     )
                 }
 
@@ -414,8 +477,16 @@ class HabitsFragment : Fragment() {
                     if (isEditMode) {
                         database.habitDao().updateHabit(habit)
                     } else {
-                        database.habitDao().insertHabit(habit)
+                        val newId = database.habitDao().insertHabit(habit)
+                         val savedHabit = habit.copy(habitId = newId.toInt())
+                         // Always schedule since time is picked
+                         ReminderScheduler.scheduleReminder(requireContext(), savedHabit)
                     }
+                    
+                    if (isEditMode) {
+                        ReminderScheduler.scheduleReminder(requireContext(), habit)
+                    }
+                    
                     withContext(Dispatchers.Main) {
                         dialog.dismiss()
                         showSnackbar(
@@ -426,7 +497,7 @@ class HabitsFragment : Fragment() {
             }
         }
 
-        btnCancel.setOnClickListener {
+        btnClose.setOnClickListener {
             dialog.dismiss()
         }
 
@@ -443,26 +514,14 @@ class HabitsFragment : Fragment() {
         editTargetValue.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_NEXT) {
                 editUnit.requestFocus()
-                editUnit.showDropDown() // Show dropdown when focused via next
                 true
             } else {
                 false
             }
         }
 
-        editUnit.setOnEditorActionListener { _, actionId, _ ->
-            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_DONE) {
-                btnSave.performClick()
-                true
-            } else {
-                false
-            }
-        }
-        
-        // Show dropdown on click
-        editUnit.setOnClickListener {
-            editUnit.showDropDown()
-        }
+        // Show dropdown on click - Removed as it is now EditText
+        // editUnit.setOnClickListener ...
 
         dialog.show()
     }

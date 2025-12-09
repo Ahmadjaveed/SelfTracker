@@ -14,5 +14,7 @@ data class Habit(
     val fixedTime: String? = null,
     val currentStreak: Int = 0,
     val bestStreak: Int = 0,
-    val lastCompletedDate: String? = null
+    val lastCompletedDate: String? = null,
+    val reminderTime: Long? = null,
+    val description: String = ""
 )

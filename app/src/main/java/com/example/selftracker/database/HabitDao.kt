@@ -13,7 +13,7 @@ interface HabitDao {
     suspend fun getHabitByIdSync(id: Int): Habit?
 
     @Insert
-    suspend fun insertHabit(habit: Habit)
+    suspend fun insertHabit(habit: Habit): Long
 
     @Update
     suspend fun updateHabit(habit: Habit)

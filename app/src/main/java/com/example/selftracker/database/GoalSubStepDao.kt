@@ -12,6 +12,9 @@ interface GoalSubStepDao {
     @Query("SELECT * FROM goal_sub_steps WHERE stepId = :stepId ORDER BY orderIndex")
     fun getSubStepsByStep(stepId: Long): LiveData<List<GoalSubStep>>
 
+    @Query("SELECT goal_sub_steps.* FROM goal_sub_steps INNER JOIN goal_steps ON goal_sub_steps.stepId = goal_steps.stepId WHERE goal_steps.goalId = :goalId")
+    fun getSubStepsByGoal(goalId: Long): LiveData<List<GoalSubStep>>
+
     @Update
     suspend fun updateGoalSubStep(goalSubStep: GoalSubStep)
 

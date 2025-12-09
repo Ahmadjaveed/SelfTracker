@@ -10,11 +10,11 @@
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        android:background="@color/surface"
+        android:background="@color/premium_dark_bg"
         android:elevation="4dp"
         app:title="My Habits"
-        app:theme="@style/ToolbarTheme"
-        app:titleTextColor="@color/primary_text">
+        app:theme="@style/DarkToolbarTheme"
+        app:titleTextColor="@color/white">
 
          <LinearLayout
             android:layout_width="wrap_content"

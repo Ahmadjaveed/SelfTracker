@@ -4,144 +4,174 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:background="@drawable/dialog_background">
+    android:padding="24dp"
+    android:background="@drawable/bg_dialog_dark_card">
 
-    <!-- Header Section -->
-    <LinearLayout
+    <!-- Header -->
+    <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@drawable/dialog_header_bg"
-        android:gravity="center"
-        android:orientation="vertical"
-        android:padding="24dp">
+        android:layout_marginBottom="32dp">
 
         <ImageView
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:src="@drawable/ic_sync" 
-            android:layout_marginBottom="8dp"
-            app:tint="@color/white"
-            android:contentDescription="Habit Icon" />
+            android:id="@+id/btn_close_dialog"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/ic_arrow_back"
+            app:tint="@color/text_primary_dark"
+            android:layout_centerVertical="true"
+            android:contentDescription="Close" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="New Habit"
-            android:textAllCaps="true"
-            android:letterSpacing="0.1"
-            android:textAppearance="?attr/textAppearanceTitleMedium"
-            android:textColor="@color/white"
-            android:textStyle="bold" />
-
-    </LinearLayout>
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:textColor="@color/text_primary_dark"
+            android:layout_centerInParent="true" />
+    </RelativeLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="24dp">
-    
-        <com.google.android.material.textfield.TextInputLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            app:hintTextColor="@color/primary"
-            app:boxStrokeColor="@color/primary"
-            app:endIconMode="clear_text"
-            app:endIconTint="@color/primary"
-            android:textColorHint="@color/gray_400">
-    
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/edit_habit_name"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="Habit Name"
-                android:imeOptions="actionNext"
-                android:maxLines="1"
-                android:textColor="@color/white"
-                android:textColorHint="@color/gray_400" />
-    
-        </com.google.android.material.textfield.TextInputLayout>
-    
-        <com.google.android.material.textfield.TextInputLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            app:hintTextColor="@color/primary"
-            app:boxStrokeColor="@color/primary"
-            app:endIconMode="clear_text"
-            app:endIconTint="@color/primary"
-            android:textColorHint="@color/gray_400">
-    
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/edit_target_value"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="Target Value"
-                android:imeOptions="actionNext"
-                android:inputType="number"
-                android:maxLines="1"
-                android:textColor="@color/white"
-                android:textColorHint="@color/gray_400" />
-    
-        </com.google.android.material.textfield.TextInputLayout>
-    
-    <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/layout_unit"
-        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="24dp"
-        app:hintTextColor="@color/primary"
-        app:boxStrokeColor="@color/primary"
-        app:endIconTint="@color/primary"
-        android:textColorHint="@color/gray_400"
-        android:hint="Unit">
+        android:layout_marginBottom="16dp">
 
-        <com.google.android.material.textfield.MaterialAutoCompleteTextView
-            android:id="@+id/edit_unit"
+        <!-- Habit Name -->
+        <EditText
+            android:id="@+id/edit_habit_name"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:background="@drawable/bg_input_dark"
+            android:drawableStart="@drawable/ic_person_minimal"
+            android:drawablePadding="16dp"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:hint="Habit Name" 
+            android:textCursorDrawable="@null"
+            android:textColor="@color/text_primary_dark"
+            android:textColorHint="@color/text_hint_dark"
+            android:textSize="16sp"
+            android:inputType="textCapSentences"
+            android:maxLines="1"
+            android:layout_marginBottom="16dp" 
+            android:drawableTint="@color/text_secondary_dark"/>
+
+        <!-- Description -->
+        <EditText
+            android:id="@+id/edit_habit_description"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:inputType="text"
-            android:maxLines="1"
-            android:text="times"
-            android:textColor="@color/white"
-            android:dropDownSelector="@android:color/transparent"
-            android:background="@null"
-            android:paddingStart="16dp" 
+            android:minHeight="56dp"
+            android:background="@drawable/bg_input_dark"
+            android:drawableStart="@drawable/ic_document_minimal" 
+            android:drawablePadding="16dp"
+            android:paddingStart="16dp"
             android:paddingEnd="16dp"
-            android:layout_gravity="center_vertical"
             android:paddingTop="12dp"
             android:paddingBottom="12dp"
-            android:popupElevation="8dp" />
+            android:hint="Description (Optional)"
+            android:textCursorDrawable="@null"
+            android:textColor="@color/text_primary_dark"
+            android:textColorHint="@color/text_hint_dark"
+            android:textSize="14sp"
+            android:inputType="textMultiLine|textCapSentences"
+            android:maxLines="3"
+            android:layout_marginBottom="16dp" 
+            android:drawableTint="@color/text_secondary_dark"/>
 
-    </com.google.android.material.textfield.TextInputLayout>
-    
+        <!-- Duration & Unit Row -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:gravity="end">
-    
-            <Button
-                android:id="@+id/btn_cancel_habit"
-                style="@style/Widget.Material3.Button.TextButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Cancel"
-                android:textColor="@color/gray_400"
-                android:layout_marginEnd="8dp" />
-    
-            <Button
-                android:id="@+id/btn_save_habit"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:backgroundTint="@color/primary"
-                android:text="Create Habit"
-                android:textColor="@color/white"
-                android:paddingHorizontal="24dp" />
-    
+            android:layout_marginBottom="16dp">
+            
+            <EditText
+                android:id="@+id/edit_target_value"
+                android:layout_width="0dp"
+                android:layout_weight="0.5"
+                android:layout_height="56dp"
+                android:background="@drawable/bg_input_dark"
+                android:drawableStart="@drawable/ic_clock_small"
+                android:drawablePadding="8dp"
+                android:paddingStart="12dp"
+                android:paddingEnd="8dp"
+                android:hint="Duration"
+                android:textCursorDrawable="@null"
+                android:textColor="@color/text_primary_dark"
+                android:textColorHint="@color/text_hint_dark"
+                android:textSize="14sp" 
+                android:inputType="number"
+                android:maxLines="1"
+                android:layout_marginEnd="4dp"
+                android:drawableTint="@color/text_secondary_dark"/>
+
+            <AutoCompleteTextView
+                android:id="@+id/edit_unit"
+                android:layout_width="0dp"
+                android:layout_weight="0.5"
+                android:layout_height="56dp"
+                android:background="@drawable/bg_input_dark"
+                android:drawableStart="@drawable/ic_ruler"
+                android:drawablePadding="8dp"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:completionThreshold="1"
+                android:hint="Unit"
+                android:textCursorDrawable="@null"
+                android:textColor="@color/text_primary_dark"
+                android:textColorHint="@color/text_hint_dark"
+                android:textSize="14sp"
+                android:inputType="text|textAutoComplete"
+                android:maxLines="1"
+                android:layout_marginStart="4dp"
+                android:drawableTint="@color/text_secondary_dark"
+                android:popupBackground="@drawable/bg_popup_dark"/>
         </LinearLayout>
+        
+        <!-- Optional Reminder Label -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Reminder Time"
+            android:textColor="@color/text_secondary_dark"
+            android:textSize="14sp"
+            android:layout_marginBottom="8dp"
+            android:layout_marginStart="4dp"/>
+            
+        <!-- Scrollable TimePicker Container -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_input_dark"
+            android:padding="8dp">
+
+            <TimePicker
+                android:id="@+id/time_picker"
+                android:layout_width="match_parent"
+                android:layout_height="140dp"
+                android:timePickerMode="spinner"
+                android:numbersBackgroundColor="@color/transparent"
+                android:numbersTextColor="@color/text_primary_dark" 
+                android:theme="@style/Theme.AppCompat.Dialog"/> 
+                <!-- Switched to standard Dialog theme which should inherit Dark if app is Dark, 
+                     or we can use a specific dark overlay if needed. Trying AppCompat.Dialog first. -->
+        </FrameLayout>
+
     </LinearLayout>
+
+    <!-- Create Button -->
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/btn_save_habit"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:background="@drawable/bg_button_blue"
+        android:text="Create Habit"
+        android:textColor="@color/white"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:textAllCaps="false"/>
 
 </LinearLayout>

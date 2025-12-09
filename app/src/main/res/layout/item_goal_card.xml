@@ -78,11 +78,14 @@
                 app:trackCornerRadius="2dp" />
 
              <!-- Steps Dot Container (Optional, kept for quick glance) -->
-            <LinearLayout
+            <!-- Steps Dot Container (Responsive Flexbox) -->
+            <com.google.android.flexbox.FlexboxLayout
                 android:id="@+id/steps_container"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
+                app:flexWrap="wrap"
+                app:alignItems="center"
+                app:justifyContent="flex_start"
                 android:layout_marginTop="8dp"
                 android:minHeight="12dp"/>
 

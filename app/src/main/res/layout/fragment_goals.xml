@@ -10,10 +10,11 @@
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        android:background="@color/surface"
+        android:background="@color/premium_dark_bg"
         android:elevation="4dp"
         app:title="Long-term Goals"
-        app:titleTextColor="@color/primary_text"
+        app:titleTextColor="@color/white"
+        app:theme="@style/DarkToolbarTheme"
         app:menu="@menu/top_bar_menu_generic" >
         
         <LinearLayout
@@ -28,11 +29,9 @@
                  android:layout_height="48dp"
                  android:src="@drawable/ic_notifications"
                  android:background="?attr/selectableItemBackgroundBorderless"
-                 app:tint="@color/secondary_text"
+                 app:tint="@color/white"
                  android:contentDescription="Notifications"/>
 
-
-                 
         </LinearLayout>
     </com.google.android.material.appbar.MaterialToolbar>
 

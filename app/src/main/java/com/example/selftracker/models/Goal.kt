@@ -9,5 +9,6 @@ data class Goal(
     val goalId: Long = 0,
     val name: String,
     val description: String? = null,
+    val localIconPath: String? = null,
     val createdAt: Long = System.currentTimeMillis()
 )

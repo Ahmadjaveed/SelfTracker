@@ -20,7 +20,7 @@ class GoalGeneratorRepository {
         "gemini-2.5-flash",
         "gemini-1.5-flash",
         "gemini-1.5-pro",
-        "gemini-pro"
+        "gemini-1.0-pro"
     )
 
     private val apiKey = BuildConfig.GEMINI_API_KEY
@@ -67,9 +67,16 @@ class GoalGeneratorRepository {
               "steps": [
                 {
                   "step_name": "string",
+                  "description": "string", // Brief explanation of the step
                   "duration_value": int,
                   "duration_unit": "days", // or weeks/months
-                  "substeps": ["string", "string"] // optional
+                  "substeps": [
+                    {
+                      "substep_name": "string",
+                      "duration_value": int, 
+                      "duration_unit": "days"
+                    }
+                  ] // optional
                 }
               ]
             }
@@ -105,11 +112,57 @@ class GoalGeneratorRepository {
         return text
     }
 
+    suspend fun generateGoalIcon(goalName: String): String {
+        log("generateGoalIcon called for: $goalName")
+         if (apiKey.isBlank()) throw Exception("API Key is missing")
+         
+         val prompt = """
+             Generate an Android Vector Drawable XML (API 24+) for a flat, modern, minimal icon representing: "$goalName".
+             
+             Constraints:
+             - Viewport: 24x24
+             - Style: Flat, solid fill (no gradients), modern.
+             - Colors: Use mostly distinct colors like #FF6B6B (Red), #4ECDC4 (Teal), #FFE66D (Yellow), #1A535C (Dark Blue). Avoid broad transparency.
+             - Output: ONLY the XML code. No markdown code fences. No explanation.
+         """.trimIndent()
+         
+         log("Requesting Icon generation...")
+         var xml = generateContentWithFallback(prompt)
+         
+         // Cleanup Markdown
+         if (xml.contains("```xml")) {
+             xml = xml.substringAfter("```xml").substringBefore("```")
+         } else if (xml.contains("```")) {
+            xml = xml.substringAfter("```").substringBefore("```")
+         }
+         
+         // Ensure we only have the XML content
+         val startIndex = xml.indexOf("<vector")
+         val endIndex = xml.lastIndexOf("</vector>")
+         
+         if (startIndex != -1 && endIndex != -1) {
+             xml = xml.substring(startIndex, endIndex + 9)
+         }
+         
+         return xml.trim()
+    }
+
+    suspend fun generateMotivation(habit: String): String {
+        log("generateMotivation called for: $habit")
+        if (apiKey.isBlank()) throw Exception("API Key is missing")
+        
+        val prompt = "Write a short, punchy (max 12 words) notification reminder to do '$habit' right now. Be motivating, friendly, and urgent. Do not use quotes."
+        
+        var text = generateContentWithFallback(prompt)
+        return text.replace("\"", "").trim()
+    }
+
     /**
      * Tries to generate content using a list of models. Returns the first successful response.
      */
     private suspend fun generateContentWithFallback(prompt: String): String {
         var lastException: Exception? = null
+        var quotaExceeded = false
         
         for (modelName in candidateModels) {
             try {
@@ -134,15 +187,37 @@ class GoalGeneratorRepository {
                     log("Model $modelName returned null text, trying next...")
                 }
             } catch (e: Exception) {
-                log("Failed with model: $modelName. Error: ${e.message}")
+                val errorMessage = e.message ?: ""
+                log("Failed with model: $modelName. Error: $errorMessage")
+                
+                if (errorMessage.contains("API key was reported as leaked")) {
+                    logError("CRITICAL: API Key Leaked.", e)
+                    throw Exception("API Key Leaked. Please update your API Key.") 
+                }
+                
+                if (errorMessage.contains("Quota exceeded") || errorMessage.contains("429")) {
+                     logError("Quota exceeded for model: $modelName", e)
+                     quotaExceeded = true
+                }
+                
                 lastException = e
-                // Continue to next model
             }
         }
         
-        // If we get here, all models failed
-        logError("All models failed.", lastException ?: Exception("Unknown error"))
-        throw lastException ?: Exception("All AI models failed to respond. Please check API Key.")
+        // Prioritize Quota Error if it occurred
+        if (quotaExceeded) {
+             throw Exception("AI Usage Limit reached. Please wait a moment and try again.")
+        }
+        
+        val finalError = lastException?.message ?: "Unknown error"
+        logError("All models failed. Last error: $finalError", lastException ?: Exception())
+        
+        if (finalError.contains("API Key Leaked")) {
+             throw Exception("Your API Key has been flagged as leaked. Please generate a new one.")
+        }
+        
+        // Generic fallback error
+        throw Exception("AI Generation failed. Please check your connection.")
     }
 
     private inline fun <reified T> parseJson(jsonString: String): T? {

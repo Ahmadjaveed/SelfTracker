@@ -26,8 +26,8 @@
         app:cbn_iconColor="@color/bottom_nav_unselected"
         app:cbn_selectedIconColor="@color/on_primary"
         app:cbn_fabColor="@color/primary"
-        app:cbn_selected_icon_size="48dp"
-        app:cbn_icon_size="24dp" />
+        app:cbn_selected_icon_size="56dp"
+        app:cbn_icon_size="28dp" />
 
     <!-- FAB (Floating above content) -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton

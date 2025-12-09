@@ -59,6 +59,7 @@ android {
 }
 
 dependencies {
+    implementation("com.google.android.flexbox:flexbox:3.0.0")
     implementation(platform("org.jetbrains.kotlin:kotlin-bom:1.9.24"))
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.appcompat:appcompat:1.7.0")
@@ -90,4 +91,7 @@ dependencies {
 
     // Gson for JSON parsing
     implementation("com.google.code.gson:gson:2.10.1")
+
+    // WorkManager
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
 }

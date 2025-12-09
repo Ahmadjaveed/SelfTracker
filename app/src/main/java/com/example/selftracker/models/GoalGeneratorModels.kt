@@ -9,9 +9,16 @@ data class GeneratedGoal(
 
 data class GeneratedStep(
     @SerializedName("step_name") val stepName: String,
+    @SerializedName("description") val description: String,
     @SerializedName("duration_value") val durationValue: Int,
     @SerializedName("duration_unit") val durationUnit: String,
-    @SerializedName("substeps") val substeps: List<String> = emptyList()
+    @SerializedName("substeps") val substeps: List<GeneratedSubStep>? = null
+)
+
+data class GeneratedSubStep(
+    @SerializedName("substep_name") val name: String,
+    @SerializedName("duration_value") val durationValue: Int,
+    @SerializedName("duration_unit") val durationUnit: String
 )
 
 data class PlanOption(

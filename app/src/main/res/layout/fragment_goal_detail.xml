@@ -23,182 +23,183 @@
 
     </com.google.android.material.appbar.AppBarLayout>
 
-    <com.google.android.material.card.MaterialCardView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_margin="16dp"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior"
-        app:cardCornerRadius="16dp"
-        app:cardElevation="1dp"
-        app:cardBackgroundColor="@color/surface_container_high">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="20dp">
-
-            <!-- Goal Header -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
-
-                <TextView
-                    android:id="@+id/goal_title"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="Goal Title"
-                    android:textAppearance="@style/TextAppearance.Material3.HeadlineSmall"
-                    android:textColor="@color/on_surface" />
-
-                <ImageButton
-                    android:id="@+id/btn_add_step_detail"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:src="@drawable/ic_add"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="Add Step"
-                    app:tint="@color/primary" />
-            </LinearLayout>
-
-            <TextView
-                android:id="@+id/goal_description"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="No description"
-                android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
-                android:textColor="@color/on_surface_variant"
-                android:layout_marginTop="4dp" />
-
-            <!-- Progress Section -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:layout_marginTop="24dp"
-                android:background="@drawable/progress_container_background"
-                android:padding="16dp">
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Progress"
-                    android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
-                    android:textColor="@color/on_surface" />
-
-                <RelativeLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp">
-
-                    <com.google.android.material.progressindicator.LinearProgressIndicator
-                        android:id="@+id/progress_bar"
-                        android:layout_width="match_parent"
-                        android:layout_height="8dp"
-                        app:trackColor="@color/surface_variant"
-                        app:trackCornerRadius="4dp"
-                        app:indicatorColor="@color/primary" />
-
-                    <TextView
-                        android:id="@+id/progress_text"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="0%"
-                        android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
-                        android:textColor="@color/on_primary"
-                        android:background="@drawable/progress_label_background"
-                        android:paddingHorizontal="12dp"
-                        android:paddingVertical="4dp"
-                        android:layout_centerInParent="true" />
-
-                </RelativeLayout>
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:layout_marginTop="16dp">
-
-                    <TextView
-                        android:id="@+id/completed_count"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="0 completed"
-                        android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
-                        android:textColor="@color/success"
-                        android:drawablePadding="8dp"
-                        android:drawableStart="@drawable/ic_check_circle_filled" />
-
-                    <!-- Total Count Wrapper -->
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:gravity="end|center_vertical"
-                        android:orientation="horizontal">
-
-                        <ImageView
-                            android:layout_width="16dp"
-                            android:layout_height="16dp"
-                            android:src="@drawable/ic_flag_total"
-                            app:tint="@color/on_surface_variant"
-                            android:contentDescription="Total Steps"
-                            android:layout_marginEnd="8dp" />
-
-                        <TextView
-                            android:id="@+id/total_count"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="0 total"
-                            android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
-                            android:textColor="@color/on_surface_variant" />
-                    </LinearLayout>
-
-                </LinearLayout>
-
-            </LinearLayout>
-
-        </LinearLayout>
-
-    </com.google.android.material.card.MaterialCardView>
-
-    <!-- Steps List -->
+    <!-- Main Content Scroll (Moves everything together) -->
     <androidx.core.widget.NestedScrollView
+        android:id="@+id/details_scroll_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_marginTop="200dp"
-        android:padding="16dp"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:paddingBottom="80dp"> <!-- Added padding for safe scrolling -->
 
-            <TextView
+            <!-- Goal Header Card -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_margin="16dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="1dp"
+                app:cardBackgroundColor="@color/surface_container_high">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp">
+
+                    <!-- Goal Header -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <TextView
+                            android:id="@+id/goal_title"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Goal Title"
+                            android:textAppearance="@style/TextAppearance.Material3.HeadlineSmall"
+                            android:textColor="@color/on_surface" />
+
+                        <ImageButton
+                            android:id="@+id/btn_add_step_detail"
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:src="@drawable/ic_add"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            android:contentDescription="Add Step"
+                            app:tint="@color/primary" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/goal_description"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="No description"
+                        android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+                        android:textColor="@color/on_surface_variant"
+                        android:layout_marginTop="4dp" />
+
+                    <!-- Progress Section -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_marginTop="24dp"
+                        android:background="@drawable/progress_container_background"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Progress"
+                            android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+                            android:textColor="@color/on_surface" />
+
+                        <RelativeLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp">
+
+                            <com.google.android.material.progressindicator.LinearProgressIndicator
+                                android:id="@+id/progress_bar"
+                                android:layout_width="match_parent"
+                                android:layout_height="8dp"
+                                app:trackColor="@color/surface_variant"
+                                app:trackCornerRadius="4dp"
+                                app:indicatorColor="@color/primary" />
+
+                            <TextView
+                                android:id="@+id/progress_text"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="0%"
+                                android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
+                                android:textColor="@color/on_primary"
+                                android:background="@drawable/progress_label_background"
+                                android:paddingHorizontal="12dp"
+                                android:paddingVertical="4dp"
+                                android:layout_centerInParent="true" />
+
+                        </RelativeLayout>
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:layout_marginTop="16dp">
+
+                            <TextView
+                                android:id="@+id/completed_count"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="0 completed"
+                                android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
+                                android:textColor="@color/success"
+                                android:drawablePadding="8dp"
+                                android:drawableStart="@drawable/ic_check_circle_filled" />
+
+                            <!-- Total Count Wrapper -->
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:gravity="end|center_vertical"
+                                android:orientation="horizontal">
+
+                                <ImageView
+                                    android:layout_width="16dp"
+                                    android:layout_height="16dp"
+                                    android:src="@drawable/ic_flag_total"
+                                    app:tint="@color/on_surface_variant"
+                                    android:contentDescription="Total Steps"
+                                    android:layout_marginEnd="8dp" />
+
+                                <TextView
+                                    android:id="@+id/total_count"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="0 total"
+                                    android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
+                                    android:textColor="@color/on_surface_variant" />
+                            </LinearLayout>
+
+                        </LinearLayout>
+
+                    </LinearLayout>
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Steps List Title -->
+             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="Your Journey"
                 android:textAppearance="@style/TextAppearance.Material3.TitleLarge"
                 android:textColor="@color/on_surface"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginTop="8dp"
                 android:layout_marginBottom="16dp" />
 
+            <!-- Steps Tree Container -->
             <LinearLayout
                 android:id="@+id/steps_tree_container"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical" />
+                android:orientation="vertical"
+                android:paddingHorizontal="16dp" />
 
         </LinearLayout>
 
     </androidx.core.widget.NestedScrollView>
-
-
-
-
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
