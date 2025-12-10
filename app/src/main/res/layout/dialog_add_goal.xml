@@ -8,33 +8,29 @@
     android:padding="24dp">
 
     <!-- Header -->
-    <FrameLayout
+    <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="24dp">
+        android:layout_marginBottom="32dp">
+
+        <ImageView
+            android:id="@+id/btn_close_dialog"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/ic_arrow_back"
+            app:tint="@color/white"
+            android:layout_centerVertical="true"
+            android:contentDescription="Close" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="center"
             android:text="New Goal"
-            android:textColor="@color/white"
-            android:textSize="20sp"
+            android:textSize="22sp"
             android:textStyle="bold"
-            android:letterSpacing="0.05" />
-
-        <ImageView
-            android:id="@+id/btn_close_dialog"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
-            android:layout_gravity="start|center_vertical"
-            android:src="@drawable/ic_arrow_back"
-            app:tint="@color/text_secondary_dark"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:clickable="true"
-            android:focusable="true" 
-            android:contentDescription="Close"/>
-    </FrameLayout>
+            android:textColor="@color/white"
+            android:layout_centerInParent="true" />
+    </RelativeLayout>
 
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
@@ -58,6 +54,7 @@
                 android:layout_marginBottom="16dp">
 
                 <ImageView
+                    android:id="@+id/img_goal_icon"
                     android:layout_width="28dp"
                     android:layout_height="28dp"
                     android:src="@drawable/ic_rocket_img"

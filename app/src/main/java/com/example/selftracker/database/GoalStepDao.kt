@@ -20,4 +20,7 @@ interface GoalStepDao {
 
     @Query("DELETE FROM goal_steps WHERE goalId = :goalId")
     suspend fun deleteStepsByGoal(goalId: Long)
+
+    @Query("SELECT * FROM goal_steps WHERE stepId = :stepId")
+    suspend fun getStepById(stepId: Long): GoalStep?
 }

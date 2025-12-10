@@ -8,27 +8,30 @@ import com.example.selftracker.models.PlanOptionsResponse
 import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 
 class GoalGeneratorRepository {
 
     // List of models to try in order of preference.
-    // Prioritizing stable 1.5 versions to avoid Quota issues with experimental models.
+    // Update: Removed specific versions that were 404ing. Kept generic aliases.
+    // List of models to try in order of preference.
+    // List of models to try in order of preference.
     private val candidateModels = listOf(
-        "gemini-1.5-flash-001",
-        "gemini-1.5-flash-002",
-        "gemini-1.5-flash",
-        "gemini-1.5-flash-latest",
-        "gemini-1.5-pro-001",
-        "gemini-1.5-pro",
-        "gemini-pro",
-        "gemini-2.0-flash-exp"
+        "gemini-2.5-flash",       // Priority 1
+        "gemini-2.5-flash-lite",  // Priority 2
+        "gemini-2.0-flash-exp",   // Priority 3
+        "gemini-1.5-flash"        // Backup
     )
 
     private val apiKey = BuildConfig.GEMINI_API_KEY
 
     suspend fun generatePlanOptions(goal: String): List<PlanOption> {
         log("generatePlanOptions called for: $goal")
-        if (apiKey.isBlank()) throw Exception("API Key is missing")
+        if (apiKey.isBlank()) {
+            logError("API Key missing, using local fallback.", Exception("Missing API Key"))
+            return generateLocalPlanOptions(goal)
+        }
 
         val prompt = """
             I want to achieve: "$goal".
@@ -48,15 +51,20 @@ class GoalGeneratorRepository {
 
         log("Requesting Options Prompt: $prompt")
         
-        val responseText = generateContentWithFallback(prompt)
-        val parsed = parseJson<PlanOptionsResponse>(responseText)
-        return parsed?.options ?: emptyList()
+        return try {
+            val responseText = generateContentWithFallback(prompt)
+            val parsed = parseJson<PlanOptionsResponse>(responseText)
+            parsed?.options ?: generateLocalPlanOptions(goal)
+        } catch (e: Exception) {
+            logError("AI Generation Failed for Options, using fallback.", e)
+            generateLocalPlanOptions(goal)
+        }
     }
 
     suspend fun generateGoal(userPrompt: String, strategy: String? = null): GeneratedGoal {
         log("generateGoal called for: $userPrompt, strategy: $strategy")
-        if (apiKey.isBlank()) throw Exception("API Key is missing")
-
+        // Note: We don't throw immediately on missing key, we try fallback.
+        
         val strategyContext = if (strategy != null) "Use the '$strategy' strategy." else ""
         val fullPrompt = """
             You are the Goal Architect. Create a structured goal plan for: "$userPrompt".
@@ -85,78 +93,103 @@ class GoalGeneratorRepository {
 
         log("Requesting Goal Prompt: $fullPrompt")
         
-        val responseText = generateContentWithFallback(fullPrompt)
-        return parseJson<GeneratedGoal>(responseText) ?: throw Exception("Failed to parse AI response")
+        return try {
+            if (apiKey.isBlank()) throw Exception("API Key is missing")
+            val responseText = generateContentWithFallback(fullPrompt)
+            parseJson<GeneratedGoal>(responseText) ?: generateLocalGoal(userPrompt)
+        } catch (e: Exception) {
+             logError("AI Generation Failed for Goal, using fallback.", e)
+             generateLocalGoal(userPrompt)
+        }
     }
 
     suspend fun enhanceGoalDescription(input: String): String {
         log("enhanceGoalDescription called: $input")
-        if (apiKey.isBlank()) throw Exception("API Key is missing")
-
-        val prompt = """
-            Task: Rewrite the following goal description to be more inspiring and actionable.
-            Input: "$input"
-            Constraint: Output ONLY the rewritten sentence. Do not add quotes. Do not say "Here is the rewritten goal".
-        """.trimIndent()
         
-        log("Requesting Enhance Prompt: $prompt")
-        
-        var text = generateContentWithFallback(prompt)
-        log("Raw Enhance Response: $text")
-        
-        // Aggressive cleanup
-        text = text.replace("\"", "") // Remove quotes
-        if (text.contains(":")) {
-            text = text.substringAfter(":").trim()
+        return try {
+            if (apiKey.isBlank()) throw Exception("API Key is missing")
+            val prompt = """
+                Task: Rewrite the following goal description to be more inspiring and actionable.
+                Input: "$input"
+                Constraint: Output ONLY the rewritten sentence. Do not add quotes. Do not say "Here is the rewritten goal".
+            """.trimIndent()
+            
+            log("Requesting Enhance Prompt: $prompt")
+            
+            var text = generateContentWithFallback(prompt)
+            log("Raw Enhance Response: $text")
+            
+            // Aggressive cleanup
+            text = text.replace("\"", "") // Remove quotes
+            if (text.contains(":")) {
+                text = text.substringAfter(":").trim()
+            }
+            text
+        } catch (e: Exception) {
+            logError("Enhance failed, returning input.", e)
+            input
         }
-        
-        return text
     }
 
     suspend fun generateGoalIcon(goalName: String): String {
         log("generateGoalIcon called for: $goalName")
-         if (apiKey.isBlank()) throw Exception("API Key is missing")
          
-         val prompt = """
-             Generate an Android Vector Drawable XML (API 24+) for a flat, modern, minimal icon representing: "$goalName".
+         return try {
+             if (apiKey.isBlank()) throw Exception("API Key is missing")
+             val prompt = """
+                 Generate a modern, flat SVG icon for: "$goalName".
+                 
+                 Constraints:
+                 - Format: SVG 1.1
+                 - Style: Minimalist, flat, solid colors (no gradients).
+                 - Viewport: 24x24
+                 - Colors: Use mostly distinct colors like #FF6B6B (Red), #4ECDC4 (Teal), #FFE66D (Yellow), #1A535C (Dark Blue).
+                 - Output: ONLY the pure SVG code starting with <svg> and ending with </svg>. No markdown.
+             """.trimIndent()
              
-             Constraints:
-             - Viewport: 24x24
-             - Style: Flat, solid fill (no gradients), modern.
-             - Colors: Use mostly distinct colors like #FF6B6B (Red), #4ECDC4 (Teal), #FFE66D (Yellow), #1A535C (Dark Blue). Avoid broad transparency.
-             - Output: ONLY the XML code. No markdown code fences. No explanation.
-         """.trimIndent()
-         
-         log("Requesting Icon generation...")
-         var xml = generateContentWithFallback(prompt)
-         
-         // Cleanup Markdown
-         if (xml.contains("```xml")) {
-             xml = xml.substringAfter("```xml").substringBefore("```")
-         } else if (xml.contains("```")) {
-            xml = xml.substringAfter("```").substringBefore("```")
+             log("Requesting Icon generation...")
+             var svg = generateContentWithFallback(prompt)
+             
+             // Cleanup Markdown
+             if (svg.contains("```svg")) {
+                 svg = svg.substringAfter("```svg").substringBefore("```")
+             } else if (svg.contains("```xml")) {
+                 svg = svg.substringAfter("```xml").substringBefore("```")
+             } else if (svg.contains("```")) {
+                svg = svg.substringAfter("```").substringBefore("```")
+             }
+             
+             // Ensure we only have the SVG content
+             val startIndex = svg.indexOf("<svg")
+             val endIndex = svg.lastIndexOf("</svg>")
+             
+             if (startIndex != -1 && endIndex != -1) {
+                 svg = svg.substring(startIndex, endIndex + 6)
+             }
+    
+             svg.trim()
+         } catch (e: Exception) {
+             logError("Icon generation failed, using local fallback.", e)
+             generateLocalIcon()
          }
-         
-         // Ensure we only have the XML content
-         val startIndex = xml.indexOf("<vector")
-         val endIndex = xml.lastIndexOf("</vector>")
-         
-         if (startIndex != -1 && endIndex != -1) {
-             xml = xml.substring(startIndex, endIndex + 9)
-         }
-         
-         return xml.trim()
     }
 
     suspend fun generateMotivation(habit: String): String {
         log("generateMotivation called for: $habit")
-        if (apiKey.isBlank()) throw Exception("API Key is missing")
         
-        val prompt = "Write a short, punchy (max 12 words) notification reminder to do '$habit' right now. Be motivating, friendly, and urgent. Do not use quotes."
-        
-        var text = generateContentWithFallback(prompt)
-        return text.replace("\"", "").trim()
+        return try {
+            if (apiKey.isBlank()) throw Exception("API Key is missing")
+            val prompt = "Write a short, punchy (max 12 words) notification reminder to do '$habit' right now. Be motivating, friendly, and urgent. Do not use quotes."
+            
+            var text = generateContentWithFallback(prompt)
+            text.replace("\"", "").trim()
+        } catch (e: Exception) {
+            "Time to work on $habit! You got this."
+        }
     }
+
+    private val openRouterApiKey = "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"
+    private val client = okhttp3.OkHttpClient()
 
     /**
      * Tries to generate content using a list of models. Returns the first successful response.
@@ -207,9 +240,14 @@ class GoalGeneratorRepository {
             }
         }
         
-        // Prioritize Quota Error if it occurred and no models succeeded
-        if (quotaExceeded) {
-             throw Exception("AI Usage Limit reached. Please wait a moment and try again.")
+        // Use Fallback if Gemini failed
+        if (quotaExceeded || lastException != null) {
+            log("Gemini failed/quota exceeded. Switch to OpenRouter Fallback.")
+            try {
+                return generateWithOpenRouter(prompt)
+            } catch (e: Exception) {
+                logError("OpenRouter Fallback failed too.", e)
+            }
         }
         
         val finalError = lastException?.message ?: "Unknown error"
@@ -221,6 +259,78 @@ class GoalGeneratorRepository {
         
         // Generic fallback error
         throw Exception("AI Generation failed. Please check your connection.")
+    }
+    private suspend fun generateWithOpenRouter(prompt: String): String {
+        val fallbackModels = listOf(
+            "google/gemini-2.0-flash-exp:free",
+            "google/gemini-2.0-flash-thinking-exp:free",
+            "meta-llama/llama-3.1-8b-instruct:free",
+            "mistralai/mistral-7b-instruct:free",
+            "microsoft/phi-3-medium-128k-instruct:free"
+        )
+
+        var lastError: Exception? = null
+
+        for (model in fallbackModels) {
+            try {
+                log("Fallback: Attempting OpenRouter with model: $model")
+                return withContext(Dispatchers.IO) {
+                    val json = org.json.JSONObject()
+                    json.put("model", model) 
+                    
+                    val messages = org.json.JSONArray()
+                    val message = org.json.JSONObject()
+                    message.put("role", "user")
+                    message.put("content", prompt)
+                    messages.put(message)
+                    
+                    json.put("messages", messages)
+                    
+                    // Add existing headers + potentially more if needed
+                    val requestBuilder = okhttp3.Request.Builder()
+                        .url("https://openrouter.ai/api/v1/chat/completions")
+                        .addHeader("Authorization", "Bearer $openRouterApiKey")
+                        .addHeader("HTTP-Referer", "http://localhost") 
+                        .addHeader("X-Title", "SelfTracker")
+                    
+                    val mediaType = "application/json; charset=utf-8".toMediaType()
+                    val body = json.toString().toRequestBody(mediaType)
+                    
+                    val request = requestBuilder.post(body).build()
+                        
+                    client.newCall(request).execute().use { response ->
+                        if (!response.isSuccessful) {
+                            val errorBody = response.body?.string()
+                            throw Exception("OpenRouter Error: ${response.code} - $errorBody")
+                        }
+                        
+                        val responseBody = response.body?.string() ?: throw Exception("Empty response from OpenRouter")
+                        val responseJson = org.json.JSONObject(responseBody)
+                        
+                        // Check for error in JSON body even if 200 OK (some APIs do this, though OpenRouter usually uses status codes)
+                        if (responseJson.has("error")) {
+                             val errObj = responseJson.getJSONObject("error")
+                             throw Exception("OpenRouter API Error: ${errObj.optString("message")}")
+                        }
+
+                        val choices = responseJson.getJSONArray("choices")
+                        if (choices.length() > 0) {
+                            val firstChoice = choices.getJSONObject(0)
+                            val messageObj = firstChoice.getJSONObject("message")
+                            return@use messageObj.getString("content")
+                        } else {
+                            throw Exception("No content in OpenRouter response")
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                log("Fallback model $model failed: ${e.message}")
+                lastError = e
+                // Continue to next fallback model
+            }
+        }
+        
+        throw lastError ?: Exception("All OpenRouter fallback models failed.")
     }
 
     private inline fun <reified T> parseJson(jsonString: String): T? {
@@ -255,4 +365,64 @@ class GoalGeneratorRepository {
     private fun logError(message: String, e: Exception) {
         android.util.Log.e("GoalGenerator", message, e)
     }
+
+    // --- Local Fail-Safe Methods ---
+
+    private fun generateLocalPlanOptions(goal: String): List<PlanOption> {
+        return listOf(
+            PlanOption("Steady Paced", "A balanced approach to achieving '$goal' consistently.", "balanced"),
+            PlanOption("Aggressive Sprint", "Fast-tracked plan to hit '$goal' as quickly as possible.", "fast"),
+            PlanOption("Relaxed & Steady", "A low-pressure way to integrate '$goal' into your life.", "relaxed")
+        )
+    }
+
+    private fun generateLocalGoal(prompt: String): GeneratedGoal {
+        // Create a generic roadmap
+        val steps = listOf(
+            GeneratedStep(
+                stepName = "Phase 1: Getting Started",
+                description = "Initial preparation and setting up the foundation for $prompt.",
+                durationValue = 5,
+                durationUnit = "days",
+                substeps = listOf(
+                    com.example.selftracker.models.GeneratedSubStep(name = "Research and gather resources", durationValue = 2, durationUnit = "days"),
+                    com.example.selftracker.models.GeneratedSubStep(name = "Set specific milestones", durationValue = 1, durationUnit = "days"),
+                    com.example.selftracker.models.GeneratedSubStep(name = "Execute first small action", durationValue = 2, durationUnit = "days")
+                )
+            ),
+            GeneratedStep(
+                stepName = "Phase 2: Core Execution",
+                description = "Main work period to develop the habit or skill.",
+                durationValue = 2,
+                durationUnit = "weeks",
+                substeps = listOf(
+                    com.example.selftracker.models.GeneratedSubStep(name = "Daily practice/work session", durationValue = 1, durationUnit = "days"),
+                    com.example.selftracker.models.GeneratedSubStep(name = "Weekly review of progress", durationValue = 1, durationUnit = "days")
+                )
+            ),
+             GeneratedStep(
+                stepName = "Phase 3: Refinement",
+                description = "Polishing and ensuring long-term success.",
+                durationValue = 1,
+                durationUnit = "weeks",
+                substeps = emptyList()
+            )
+        )
+        return GeneratedGoal(
+            goalTitle = prompt.replaceFirstChar { it.uppercase() },
+            steps = steps
+        )
+    }
+
+    private fun generateLocalIcon(): String {
+        // A simple generic target/bullseye SVG
+        return """
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#4ECDC4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <circle cx="12" cy="12" r="6" />
+              <circle cx="12" cy="12" r="2" />
+            </svg>
+        """.trimIndent()
+    }
 }
+

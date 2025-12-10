@@ -8,16 +8,18 @@
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/surface_container_low"
-        android:elevation="0dp">
+        android:background="@color/premium_dark_bg"
+        android:elevation="4dp">
 
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            android:background="@color/surface_container_low"
-            app:titleTextColor="@color/on_surface"
+            android:background="@color/premium_dark_bg"
+            app:titleTextColor="@color/white"
             app:navigationIcon="@drawable/ic_arrow_back"
+            app:navigationIconTint="@color/white"
+            app:theme="@style/DarkToolbarTheme"
             app:title="Goal Details"
             app:menu="@menu/goal_detail_menu" />
 

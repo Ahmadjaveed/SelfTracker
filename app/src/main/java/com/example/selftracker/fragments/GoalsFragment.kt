@@ -20,6 +20,108 @@ class GoalsFragment : Fragment() {
 
     private lateinit var goalsContainer: LinearLayout
     private lateinit var database: SelfTrackerDatabase
+    private lateinit var toolbar: androidx.appcompat.widget.Toolbar
+    
+    // Selection Mode
+    private val selectedGoalIds = mutableSetOf<Long>()
+    private var isSelectionMode = false
+
+    private fun toggleSelection(goalId: Long, cardView: com.google.android.material.card.MaterialCardView) {
+        if (selectedGoalIds.contains(goalId)) {
+            selectedGoalIds.remove(goalId)
+        } else {
+            selectedGoalIds.add(goalId)
+        }
+        
+        // Update Card Visuals
+        val isSelected = selectedGoalIds.contains(goalId)
+        cardView.isChecked = isSelected
+        cardView.setCardBackgroundColor(
+            if (isSelected) requireContext().getColor(R.color.primary_container) 
+            else requireContext().getColor(R.color.surface)
+        )
+
+        if (selectedGoalIds.isEmpty()) {
+            isSelectionMode = false
+            updateToolbarForSelection()
+        } else {
+            updateToolbarForSelection()
+        }
+    }
+    
+    private fun clearSelection() {
+        selectedGoalIds.clear()
+        isSelectionMode = false
+        updateToolbarForSelection()
+        loadGoals() // Reload to reset visuals easily
+    }
+
+    private fun updateToolbarForSelection() {
+        // Find toolbar again if needed or ensure it's available.
+        // Using class member 'toolbar' if initialized, else find it.
+        // Safest is to just use the toolbar member we fixed earlier? 
+        // But let's stick to safe binding.
+        val toolbar = requireView().findViewById<androidx.appcompat.widget.Toolbar>(R.id.toolbar)
+        
+        if (isSelectionMode) {
+            val count = selectedGoalIds.size
+            toolbar.title = "$count Selected"
+            toolbar.menu.clear()
+            toolbar.inflateMenu(R.menu.menu_selection)
+            
+            // Tint Delete Icon White
+            val deleteItem = toolbar.menu.findItem(R.id.action_delete_selected)
+            deleteItem?.icon?.setTint(android.graphics.Color.WHITE)
+            
+            toolbar.setNavigationIcon(R.drawable.ic_close)
+            toolbar.setNavigationOnClickListener {
+                clearSelection()
+            }
+        } else {
+            toolbar.title = "Goals"
+            toolbar.menu.clear() // Remove selection menu items (Delete)
+            setupToolbar(requireView()) // Restore original menu
+            toolbar.navigationIcon = null
+        }
+    }
+    
+    private fun handleSelectionMenuItemClick(item: android.view.MenuItem): Boolean {
+         return when (item.itemId) {
+             R.id.action_delete_selected -> {
+                 showDeleteSelectedConfirmation()
+                 true
+             }
+             else -> false
+         }
+    }
+    
+    private fun showDeleteSelectedConfirmation() {
+        val count = selectedGoalIds.size
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext(), R.style.Theme_SelfTracker_AlertDialog)
+            .setTitle("Delete $count Goals?")
+            .setMessage("Are you sure you want to delete these goals? All steps and data will be lost.")
+            .setPositiveButton("Delete") { _, _ ->
+                deleteSelectedGoals()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun deleteSelectedGoals() {
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            val idsToDelete = selectedGoalIds.toList()
+            idsToDelete.forEach { id ->
+                val goal = database.goalDao().getGoalById(id)
+                if (goal != null) {
+                    database.goalDao().deleteGoal(goal)
+                }
+            }
+             withContext(Dispatchers.Main) {
+                clearSelection()
+                android.widget.Toast.makeText(requireContext(), "${idsToDelete.size} goals deleted", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -38,7 +140,12 @@ class GoalsFragment : Fragment() {
 
     private fun setupToolbar(view: View) {
         val btnNotifications = view.findViewById<ImageButton>(R.id.btn_notifications)
-        val toolbar = view.findViewById<androidx.appcompat.widget.Toolbar>(R.id.toolbar)
+        toolbar = view.findViewById<androidx.appcompat.widget.Toolbar>(R.id.toolbar) // Assign to class member
+        
+        // Ensure regular menu is inflated
+        if (toolbar.menu.size() == 0) {
+            toolbar.inflateMenu(R.menu.top_bar_menu_generic) // Use generic menu or appropriate one
+        }
 
         btnNotifications.setOnClickListener {
             Toast.makeText(context, "No new notifications", Toast.LENGTH_SHORT).show()
@@ -46,6 +153,9 @@ class GoalsFragment : Fragment() {
         
         // Handle generic menu items (Settings)
         toolbar.setOnMenuItemClickListener { menuItem ->
+            if (handleSelectionMenuItemClick(menuItem)) {
+                return@setOnMenuItemClickListener true
+            }
             when (menuItem.itemId) {
                 R.id.action_settings -> {
                     Toast.makeText(context, "Settings", Toast.LENGTH_SHORT).show()
@@ -120,13 +230,37 @@ class GoalsFragment : Fragment() {
         }
 
         // Click on entire card to view details
-        view.setOnClickListener {
-            val goalDetailFragment = GoalDetailFragment.newInstance(goal.goalId)
-            requireActivity().supportFragmentManager.beginTransaction()
-                .replace(R.id.fragment_container, goalDetailFragment)
-                .addToBackStack("goal_detail")
-                .commit()
+        // Click on entire card to view details or select
+        val cardView = view as com.google.android.material.card.MaterialCardView
+        cardView.setOnClickListener {
+            if (isSelectionMode) {
+                toggleSelection(goal.goalId, cardView)
+            } else {
+                val goalDetailFragment = GoalDetailFragment.newInstance(goal.goalId)
+                requireActivity().supportFragmentManager.beginTransaction()
+                    .replace(R.id.fragment_container, goalDetailFragment)
+                    .addToBackStack("goal_detail")
+                    .commit()
+            }
         }
+        
+        cardView.setOnLongClickListener {
+            if (!isSelectionMode) {
+                isSelectionMode = true
+                toggleSelection(goal.goalId, cardView)
+                true
+            } else {
+                false
+            }
+        }
+        
+        // Initial visual state (if re-binding while selected)
+        val isSelected = selectedGoalIds.contains(goal.goalId)
+        cardView.isChecked = isSelected
+        cardView.setCardBackgroundColor(
+            if (isSelected) requireContext().getColor(R.color.primary_container) 
+            else requireContext().getColor(R.color.surface)
+        )
 
         goalsContainer.addView(view)
     }
@@ -167,6 +301,7 @@ class GoalsFragment : Fragment() {
         val editDescription = dialogView.findViewById<EditText>(R.id.edit_goal_description)
         // No more TextInputLayout for description interactions
         val btnEnhance = dialogView.findViewById<ImageView>(R.id.btn_enhance_description)
+        val imgIcon = dialogView.findViewById<ImageView>(R.id.img_goal_icon)
 
         val btnSave = dialogView.findViewById<Button>(R.id.btn_save_goal)
         val btnClose = dialogView.findViewById<ImageView>(R.id.btn_close_dialog) // Changed from btn_cancel_goal button
@@ -191,6 +326,10 @@ class GoalsFragment : Fragment() {
 
         // Handle Magic Wand Click (Enhance Description)
         btnEnhance.setOnClickListener {
+            // Hide keyboard
+            val imm = requireContext().getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
+            imm.hideSoftInputFromWindow(dialogView.windowToken, 0)
+            
             val originalText = editDescription.text.toString().trim()
             if (originalText.isNotEmpty()) {
                 textStatus.text = "Enhancing description..."
@@ -265,11 +404,12 @@ class GoalsFragment : Fragment() {
                                         val generatedGoal = repository.generateGoal(prompt, selectedOption.strategy)
                                         
                                         // Generate Icon
+                                        // Generate Icon
                                         withContext(Dispatchers.Main) { textStatus.text = "Designing icon..." }
-                                        val iconXml = repository.generateGoalIcon(generatedGoal.goalTitle)
-                                        val iconFileName = "goal_icon_${System.currentTimeMillis()}.xml"
+                                        val iconSvg = repository.generateGoalIcon(generatedGoal.goalTitle)
+                                        val iconFileName = "goal_icon_${System.currentTimeMillis()}.svg"
                                         val iconFile = java.io.File(requireContext().filesDir, iconFileName)
-                                        iconFile.writeText(iconXml)
+                                        iconFile.writeText(iconSvg)
                                         
                                         withContext(Dispatchers.Main) {
                                             btnGenerate.isEnabled = true
@@ -282,6 +422,12 @@ class GoalsFragment : Fragment() {
                                             editName.setText(generatedGoal.goalTitle)
                                             editName.tag = iconFile.absolutePath // Stash path
                                             
+                                            // Update Icon Preview
+                                            val drawable = loadIconFromFile(iconFile.absolutePath)
+                                            if (drawable != null) {
+                                                imgIcon.setImageDrawable(drawable)
+                                            }
+
                                             // FIX: Assign to outer variable so it can be saved
                                             generatedSteps = generatedGoal.steps
                                             
@@ -456,28 +602,29 @@ class GoalsFragment : Fragment() {
         
         return try {
             val fis = java.io.FileInputStream(file)
-            val parser = android.util.Xml.newPullParser()
-            parser.setInput(fis, "UTF-8")
+            val svg = com.caverock.androidsvg.SVG.getFromInputStream(fis)
             
-            // Skip to first tag
-            var type = parser.eventType
-            while (type != org.xmlpull.v1.XmlPullParser.START_TAG && type != org.xmlpull.v1.XmlPullParser.END_DOCUMENT) {
-                type = parser.next()
-            }
+            // Set high resolution for rendering (e.g., 512x512) to avoid blurriness
+            // The SVG is likely 24x24 from the prompt, but we want it crisp on screen.
+            val size = 512f
+            svg.documentWidth = size
+            svg.documentHeight = size
             
-            if (type != org.xmlpull.v1.XmlPullParser.START_TAG) {
-                android.util.Log.e("GoalsFragment", "No start tag found")
-                return null
-            }
-
-            android.util.Log.d("GoalsFragment", "Parsing icon from $path")
+            val bitmap = android.graphics.Bitmap.createBitmap(
+                size.toInt(), 
+                size.toInt(), 
+                android.graphics.Bitmap.Config.ARGB_8888
+            )
             
-            // Use VectorDrawableCompat manually
-            androidx.vectordrawable.graphics.drawable.VectorDrawableCompat.createFromXml(resources, parser, null)
+            val canvas = android.graphics.Canvas(bitmap)
+            // Optional: Clear canvas if needed, but new bitmap is transparent
+            svg.renderToCanvas(canvas)
+            
+            android.graphics.drawable.BitmapDrawable(resources, bitmap)
             
         } catch (e: Exception) {
-            android.util.Log.e("GoalsFragment", "Error loading icon", e)
-            null
+            android.util.Log.w("GoalsFragment", "Failed to load custom icon: ${e.message}. Using default.")
+            null // Will trigger default icon usage in caller
         }
     }
 

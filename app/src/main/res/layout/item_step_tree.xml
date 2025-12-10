@@ -83,6 +83,18 @@
 
             </LinearLayout>
 
+            <!-- Edit Button -->
+            <ImageButton
+                android:id="@+id/btn_edit_step"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_marginEnd="4dp"
+                android:src="@drawable/ic_edit"
+                app:tint="@color/on_surface_variant"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:scaleType="centerInside"
+                android:contentDescription="Edit Step" />
+
             <!-- Expand Button -->
             <ImageButton
                 android:id="@+id/btn_expand"

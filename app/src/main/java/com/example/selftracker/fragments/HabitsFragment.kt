@@ -118,6 +118,10 @@ class HabitsFragment : Fragment() {
 
         // Menu is inflated via XML (app:menu), so we just set the listener
         toolbar.setOnMenuItemClickListener { menuItem ->
+            if (handleSelectionMenuItemClick(menuItem)) {
+                return@setOnMenuItemClickListener true
+            }
+            
             when (menuItem.itemId) {
                 R.id.menu_sort -> {
                     showSortDialog()
@@ -132,19 +136,90 @@ class HabitsFragment : Fragment() {
         }
     }
 
+    private fun showDeleteSelectedConfirmation() {
+        val count = habitAdapter.selectedHabits.size
+        MaterialAlertDialogBuilder(requireContext(), R.style.Theme_SelfTracker_AlertDialog)
+            .setTitle("Delete $count Habits?")
+            .setMessage("Are you sure you want to delete these $count habits? This cannot be undone.")
+            .setPositiveButton("Delete") { _, _ ->
+                val selectedIds = habitAdapter.deleteSelectedItems()
+                deleteHabits(selectedIds)
+                habitAdapter.clearSelection()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+    
+    private fun deleteHabits(habitIds: List<Int>) {
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            habitIds.forEach { id ->
+                database.habitLogDao().deleteLogsByHabit(id)
+                val habit = database.habitDao().getHabitByIdSync(id) // Ideally batch delete
+                if (habit != null) {
+                    database.habitDao().deleteHabit(habit)
+                }
+            }
+            withContext(Dispatchers.Main) {
+                showSnackbar("$habitIds.size habits deleted")
+            }
+        }
+    }
+
     private fun setupRecyclerView() {
         habitAdapter = HabitAdapter(
             onCompleteHabit = { habit -> markHabitComplete(habit) },
             onEditHabit = { habit -> showEditHabitDialog(habit) },
             onDeleteHabit = { habit -> showDeleteConfirmation(habit) },
-            onShowDetails = { habit -> showHabitDetails(habit) }
+            onShowDetails = { habit -> showHabitDetails(habit) },
+            onSelectionChanged = { isSelectionMode, count -> 
+                updateToolbarForSelection(isSelectionMode, count)
+            }
         )
-
+        
         habitsRecyclerView.apply {
             layoutManager = LinearLayoutManager(requireContext())
             adapter = habitAdapter
             setHasFixedSize(true)
         }
+    }
+
+    private var selectionMenuItem: android.view.MenuItem? = null
+
+    private fun updateToolbarForSelection(isSelectionMode: Boolean, count: Int) {
+        if (isSelectionMode) {
+            toolbar.title = "$count Selected"
+            toolbar.menu.clear()
+            toolbar.inflateMenu(R.menu.menu_selection) // Assuming a generic selection menu or we create it dynamically
+            
+            // If menu_selection doesn't exist yet, we can add delete item dynamically
+            if (toolbar.menu.findItem(R.id.action_delete_selected) == null) {
+                 toolbar.menu.add(0, R.id.action_delete_selected, 0, "Delete").setIcon(R.drawable.ic_delete).setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_ALWAYS)
+            }
+            
+            // Tint Delete Icon White
+            val deleteItem = toolbar.menu.findItem(R.id.action_delete_selected)
+            deleteItem?.icon?.setTint(android.graphics.Color.WHITE)
+            
+            toolbar.setNavigationIcon(R.drawable.ic_close)
+            toolbar.setNavigationOnClickListener {
+                habitAdapter.clearSelection()
+            }
+        } else {
+            toolbar.title = "Habits" // Or original title
+            setupToolbar() // Restore original menu
+            toolbar.navigationIcon = null
+        }
+    }
+    
+    // Add inside setupToolbar listener or a new listener in updateToolbarForSelection
+    private fun handleSelectionMenuItemClick(item: android.view.MenuItem): Boolean {
+         return when (item.itemId) {
+             R.id.action_delete_selected -> {
+                 showDeleteSelectedConfirmation()
+                 true
+             }
+             else -> false
+         }
     }
 
     private fun loadHabits() {

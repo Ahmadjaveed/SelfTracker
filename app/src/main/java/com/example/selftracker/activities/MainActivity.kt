@@ -84,7 +84,8 @@ class MainActivity : AppCompatActivity() {
 
         supportFragmentManager.addOnBackStackChangedListener {
             val currentFragment = supportFragmentManager.findFragmentById(R.id.fragment_container)
-            if (currentFragment is com.example.selftracker.fragments.GoalDetailFragment) {
+            if (currentFragment is com.example.selftracker.fragments.GoalDetailFragment || 
+                currentFragment is com.example.selftracker.fragments.ProgressFragment) {
                 fabAdd.hide()
             } else {
                  // Restore visibility if needed

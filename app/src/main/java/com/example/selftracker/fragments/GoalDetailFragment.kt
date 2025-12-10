@@ -68,8 +68,43 @@ class GoalDetailFragment : Fragment() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        // Set Status Bar to Dark for this fragment with Light Icons
+        requireActivity().window.statusBarColor = ContextCompat.getColor(requireContext(), R.color.premium_dark_bg)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+             requireActivity().window.insetsController?.setSystemBarsAppearance(0, android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS)
+        } else {
+            @Suppress("DEPRECATION")
+            requireActivity().window.decorView.systemUiVisibility = requireActivity().window.decorView.systemUiVisibility and android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR.inv()
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        // Reset Status Bar to default (Light Background, Dark Icons)
+        requireActivity().window.statusBarColor = ContextCompat.getColor(requireContext(), R.color.background)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+             requireActivity().window.insetsController?.setSystemBarsAppearance(android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS, android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS)
+        } else {
+             @Suppress("DEPRECATION")
+             requireActivity().window.decorView.systemUiVisibility = requireActivity().window.decorView.systemUiVisibility or android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+        }
+    }
+
+    private var isSelectionMode = false
+    private val selectedStepIds = mutableSetOf<Long>()
+
     private fun setupToolbarMenu() {
         val toolbar = requireView().findViewById<com.google.android.material.appbar.MaterialToolbar>(R.id.toolbar)
+        
+        // Force menu icons to be white using PorterDuff color filter
+        val menu = toolbar.menu
+        for (i in 0 until menu.size()) {
+            val item = menu.getItem(i)
+            item.icon?.setColorFilter(android.graphics.Color.WHITE, android.graphics.PorterDuff.Mode.SRC_IN)
+        }
+        
         toolbar.setOnMenuItemClickListener { menuItem ->
             when (menuItem.itemId) {
                 R.id.menu_edit_goal -> {
@@ -80,7 +115,95 @@ class GoalDetailFragment : Fragment() {
                     showDeleteGoalDialog()
                     true
                 }
+                R.id.action_delete_selected -> {
+                    showDeleteSelectedConfirmation()
+                    true
+                }
                 else -> false
+            }
+        }
+    }
+
+    private fun updateToolbarForSelection() {
+        val toolbar = requireView().findViewById<com.google.android.material.appbar.MaterialToolbar>(R.id.toolbar)
+        if (isSelectionMode) {
+            toolbar.title = "${selectedStepIds.size} Selected"
+            toolbar.navigationIcon = ContextCompat.getDrawable(requireContext(), R.drawable.ic_close)?.apply {
+                setTint(ContextCompat.getColor(requireContext(), R.color.white))
+            }
+            toolbar.setNavigationOnClickListener {
+                exitSelectionMode()
+            }
+            
+            toolbar.menu.clear()
+            // Add Delete Action dynamically
+            val deleteItem = toolbar.menu.add(0, R.id.action_delete_selected, 0, "Delete")
+            deleteItem.icon = ContextCompat.getDrawable(requireContext(), R.drawable.ic_delete)
+            deleteItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS)
+            deleteItem.icon?.setColorFilter(android.graphics.Color.WHITE, android.graphics.PorterDuff.Mode.SRC_IN)
+            
+        } else {
+            toolbar.title = goal.name
+            toolbar.navigationIcon = ContextCompat.getDrawable(requireContext(), R.drawable.ic_arrow_back)?.apply {
+                 setTint(ContextCompat.getColor(requireContext(), R.color.white))
+            }
+            toolbar.setNavigationOnClickListener {
+                requireActivity().supportFragmentManager.popBackStack()
+            }
+            toolbar.menu.clear()
+            toolbar.inflateMenu(R.menu.goal_detail_menu)
+            setupToolbarMenu() // Re-apply tint
+        }
+    }
+
+    private fun exitSelectionMode() {
+        isSelectionMode = false
+        selectedStepIds.clear()
+        updateToolbarForSelection()
+        loadGoalDetails() // Refresh UI to remove highlights
+    }
+
+    private fun toggleSelection(stepId: Long) {
+        if (selectedStepIds.contains(stepId)) {
+            selectedStepIds.remove(stepId)
+            if (selectedStepIds.isEmpty()) {
+                exitSelectionMode()
+                return // Exit early
+            }
+        } else {
+            selectedStepIds.add(stepId)
+        }
+        updateToolbarForSelection()
+        loadGoalDetails() // Refresh UI to update highlights
+    }
+
+    private fun showDeleteSelectedConfirmation() {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Delete ${selectedStepIds.size} Steps?")
+            .setMessage("Are you sure you want to delete selected steps? This cannot be undone.")
+            .setPositiveButton("Delete") { _, _ ->
+                 deleteSelectedSteps()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun deleteSelectedSteps() {
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            val idsToDelete = selectedStepIds.toList()
+            idsToDelete.forEach { id ->
+                // Delete substeps first (if cascade not set, manual delete safety)
+                val substeps = database.goalSubStepDao().getSubStepsByStep(id).value ?: emptyList()
+                substeps.forEach { database.goalSubStepDao().deleteGoalSubStep(it) }
+                
+                // Delete step
+                val step = database.goalStepDao().getStepById(id)
+                step?.let { database.goalStepDao().deleteGoalStep(it) }
+            }
+            
+            withContext(Dispatchers.Main) {
+                exitSelectionMode()
+                Toast.makeText(requireContext(), "${idsToDelete.size} steps deleted", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -203,10 +326,16 @@ class GoalDetailFragment : Fragment() {
         val substepsContainer = stepView.findViewById<LinearLayout>(R.id.substeps_container)
         val btnAddSubstep = stepView.findViewById<com.google.android.material.button.MaterialButton>(R.id.btn_add_substep)
         val btnExpand = stepView.findViewById<ImageButton>(R.id.btn_expand)
+        val btnEditStep = stepView.findViewById<ImageButton>(R.id.btn_edit_step)
 
         stepName.text = step.name
         stepDuration.text = "${step.duration} ${step.durationUnit}"
         stepCheckbox.isChecked = step.isCompleted
+
+        // Edit Step Button
+        btnEditStep.setOnClickListener {
+            showStepDetailsDialog(step)
+        }
 
         // Step completion checkbox listener
         stepCheckbox.setOnCheckedChangeListener { _, isChecked ->
@@ -232,6 +361,13 @@ class GoalDetailFragment : Fragment() {
         substepsContainer.visibility = if (isExpanded) View.VISIBLE else View.GONE
         btnExpand.setImageResource(if (isExpanded) R.drawable.ic_expand_less else R.drawable.ic_expand_more)
 
+        // Selection Visuals
+        if (selectedStepIds.contains(step.stepId)) {
+            stepView.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.primary_container)) // Highlight
+        } else {
+            stepView.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+        }
+
         // Load and display substeps
         database.goalSubStepDao().getSubStepsByStep(step.stepId).observe(viewLifecycleOwner) { substeps ->
             updateSubstepsUI(substepsContainer, substeps, stepProgress, stepProgressBar, step, stepCheckbox)
@@ -239,26 +375,39 @@ class GoalDetailFragment : Fragment() {
 
         // Expand/collapse logic
         val toggleExpansion = {
-            if (expandedStepIds.contains(step.stepId)) {
-                expandedStepIds.remove(step.stepId)
-                substepsContainer.visibility = View.GONE
-                btnExpand.setImageResource(R.drawable.ic_expand_more)
-            } else {
-                expandedStepIds.add(step.stepId)
-                substepsContainer.visibility = View.VISIBLE
-                btnExpand.setImageResource(R.drawable.ic_expand_less)
+            if (!isSelectionMode) {
+                if (expandedStepIds.contains(step.stepId)) {
+                    expandedStepIds.remove(step.stepId)
+                    substepsContainer.visibility = View.GONE
+                    btnExpand.setImageResource(R.drawable.ic_expand_more)
+                } else {
+                    expandedStepIds.add(step.stepId)
+                    substepsContainer.visibility = View.VISIBLE
+                    btnExpand.setImageResource(R.drawable.ic_expand_less)
+                }
             }
         }
 
         btnExpand.setOnClickListener { toggleExpansion() }
         
-        // Step click listener - Now toggles expansion
-        stepView.setOnClickListener { toggleExpansion() }
+        // Step click listener - Handle Selection or Expansion
+        stepView.setOnClickListener { 
+            if (isSelectionMode) {
+                toggleSelection(step.stepId)
+            } else {
+                 toggleExpansion()
+            }
+        }
 
-        // Step long click listener - Edit step details
+        // Step long click listener - Enter Selection Mode
         stepView.setOnLongClickListener {
-            showStepDetailsDialog(step)
-            true
+            if (!isSelectionMode) {
+                isSelectionMode = true
+                toggleSelection(step.stepId)
+                true
+            } else {
+                false 
+            }
         }
 
         // Add substep button

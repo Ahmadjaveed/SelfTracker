@@ -94,4 +94,10 @@ dependencies {
 
     // WorkManager
     implementation("androidx.work:work-runtime-ktx:2.9.0")
+
+    // OkHttp for OpenRouter Fallback
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
+    // AndroidSVG for dynamic SVG loading
+    implementation("com.caverock:androidsvg-aar:1.4")
 }
