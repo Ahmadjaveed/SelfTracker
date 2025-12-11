@@ -31,6 +31,25 @@ class HabitAdapter(
         onSelectionChanged(false, 0)
     }
 
+    fun selectAll(habits: List<Habit>) {
+        selectedHabits.clear()
+        habits.forEach { selectedHabits.add(it.habitId) }
+        isSelectionMode = true
+        notifyDataSetChanged()
+        onSelectionChanged(true, selectedHabits.size)
+    }
+
+    fun deselectAll() {
+        selectedHabits.clear()
+        isSelectionMode = false 
+        notifyDataSetChanged()
+        onSelectionChanged(false, 0)
+    }
+
+    fun isAllSelected(totalCount: Int): Boolean {
+        return selectedHabits.size == totalCount && totalCount > 0
+    }
+
     fun deleteSelectedItems(): List<Int> {
         val itemsToDelete = selectedHabits.toList()
         return itemsToDelete
@@ -119,13 +138,29 @@ class HabitAdapter(
             )
 
             // Dynamic Icon
-            val iconRes = if (habit.unit.lowercase() in listOf("min", "mins", "minute", "minutes", "hour", "hours", "hr", "hrs", "time")) {
-                R.drawable.ic_habit_time
+            val iconView = itemView.findViewById<ImageView>(R.id.icon_habit)
+            
+            if (habit.iconPath != null) {
+                // If we have a scraped icon, use Glide
+                com.bumptech.glide.Glide.with(itemView.context)
+                    .load(habit.iconPath)
+                    .circleCrop() // Make it round for habits
+                    .placeholder(R.drawable.ic_habit_count)
+                    .error(R.drawable.ic_habit_count)
+                    .into(iconView)
+                iconView.imageTintList = null // Disable tint to show original colors
             } else {
-                R.drawable.ic_habit_count
+                // Fallback to existing logic
+                val iconRes = if (habit.unit.lowercase() in listOf("min", "mins", "minute", "minutes", "hour", "hours", "hr", "hrs", "time")) {
+                    R.drawable.ic_habit_time
+                } else {
+                    R.drawable.ic_habit_count
+                }
+                iconView.setImageResource(iconRes)
+                // Restore tint if your XML applies it by default, or set it explicitly
+                iconView.imageTintList = android.content.res.ColorStateList.valueOf(itemView.context.getColor(R.color.primary))
             }
-            itemView.findViewById<ImageView>(R.id.icon_habit).setImageResource(iconRes)
-
+            
             // Determine if completed today
             val today = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
             val isCompletedToday = habit.lastCompletedDate == today

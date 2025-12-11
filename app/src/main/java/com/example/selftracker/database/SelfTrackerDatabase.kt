@@ -11,8 +11,8 @@ import com.example.selftracker.models.Habit
 import com.example.selftracker.models.HabitLog
 
 @Database(
-    entities = [Habit::class, HabitLog::class, Goal::class, GoalStep::class, GoalSubStep::class],
-    version = 4,  // Bump for description
+    entities = [Habit::class, HabitLog::class, Goal::class, GoalStep::class, GoalSubStep::class, com.example.selftracker.models.GoalResource::class],
+    version = 7,  // Bump for Habit iconPath
     exportSchema = false
 )
 abstract class SelfTrackerDatabase : RoomDatabase() {
@@ -21,6 +21,7 @@ abstract class SelfTrackerDatabase : RoomDatabase() {
     abstract fun goalDao(): GoalDao
     abstract fun goalStepDao(): GoalStepDao
     abstract fun goalSubStepDao(): GoalSubStepDao
+    abstract fun goalResourceDao(): com.example.selftracker.database.GoalResourceDao
 
     companion object {
         @Volatile

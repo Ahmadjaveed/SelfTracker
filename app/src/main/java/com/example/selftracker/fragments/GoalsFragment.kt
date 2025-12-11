@@ -9,8 +9,10 @@ import android.widget.*
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import com.bumptech.glide.Glide
 import com.example.selftracker.R
 import com.example.selftracker.database.SelfTrackerDatabase
+import com.example.selftracker.database.GoalWithProgress
 import com.example.selftracker.models.Goal
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -56,45 +58,7 @@ class GoalsFragment : Fragment() {
         loadGoals() // Reload to reset visuals easily
     }
 
-    private fun updateToolbarForSelection() {
-        // Find toolbar again if needed or ensure it's available.
-        // Using class member 'toolbar' if initialized, else find it.
-        // Safest is to just use the toolbar member we fixed earlier? 
-        // But let's stick to safe binding.
-        val toolbar = requireView().findViewById<androidx.appcompat.widget.Toolbar>(R.id.toolbar)
-        
-        if (isSelectionMode) {
-            val count = selectedGoalIds.size
-            toolbar.title = "$count Selected"
-            toolbar.menu.clear()
-            toolbar.inflateMenu(R.menu.menu_selection)
-            
-            // Tint Delete Icon White
-            val deleteItem = toolbar.menu.findItem(R.id.action_delete_selected)
-            deleteItem?.icon?.setTint(android.graphics.Color.WHITE)
-            
-            toolbar.setNavigationIcon(R.drawable.ic_close)
-            toolbar.setNavigationOnClickListener {
-                clearSelection()
-            }
-        } else {
-            toolbar.title = "Goals"
-            toolbar.menu.clear() // Remove selection menu items (Delete)
-            setupToolbar(requireView()) // Restore original menu
-            toolbar.navigationIcon = null
-        }
-    }
-    
-    private fun handleSelectionMenuItemClick(item: android.view.MenuItem): Boolean {
-         return when (item.itemId) {
-             R.id.action_delete_selected -> {
-                 showDeleteSelectedConfirmation()
-                 true
-             }
-             else -> false
-         }
-    }
-    
+
     private fun showDeleteSelectedConfirmation() {
         val count = selectedGoalIds.size
         com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext(), R.style.Theme_SelfTracker_AlertDialog)
@@ -106,6 +70,8 @@ class GoalsFragment : Fragment() {
             .setNegativeButton("Cancel", null)
             .show()
     }
+
+    private var currentGoalsList: List<com.example.selftracker.database.GoalWithProgress> = emptyList()
 
     private fun deleteSelectedGoals() {
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
@@ -120,6 +86,69 @@ class GoalsFragment : Fragment() {
                 clearSelection()
                 android.widget.Toast.makeText(requireContext(), "${idsToDelete.size} goals deleted", android.widget.Toast.LENGTH_SHORT).show()
             }
+        }
+    }
+
+    private fun selectAllGoals() {
+        currentGoalsList.forEach { 
+             selectedGoalIds.add(it.goal.goalId)
+        }
+        
+        // Update UI for all cards
+        for (i in 0 until goalsContainer.childCount) {
+            val view = goalsContainer.getChildAt(i)
+            if (view is com.google.android.material.card.MaterialCardView) {
+                view.isChecked = true
+                view.setCardBackgroundColor(requireContext().getColor(R.color.primary_container))
+            }
+        }
+        
+        isSelectionMode = true
+        updateToolbarForSelection()
+    }
+
+    // Update handleSelectionMenuItemClick to handle Select All
+    private fun handleSelectionMenuItemClick(item: android.view.MenuItem): Boolean {
+         return when (item.itemId) {
+             R.id.action_delete_selected -> {
+                 showDeleteSelectedConfirmation()
+                 true
+             }
+             R.id.action_select_all -> {
+                 if (currentGoalsList.isNotEmpty() && selectedGoalIds.size == currentGoalsList.size) {
+                     clearSelection()
+                 } else {
+                     selectAllGoals()
+                 }
+                 true
+             }
+             else -> false
+         }
+    }
+
+    private fun updateToolbarForSelection() {
+        if (isSelectionMode) {
+            val count = selectedGoalIds.size
+            toolbar.title = "$count Selected"
+            toolbar.menu.clear()
+            toolbar.inflateMenu(R.menu.menu_selection)
+            
+            // Tint Icons White
+            val deleteItem = toolbar.menu.findItem(R.id.action_delete_selected)
+            deleteItem?.icon?.setTint(android.graphics.Color.WHITE)
+            
+            val selectAllItem = toolbar.menu.findItem(R.id.action_select_all)
+            selectAllItem?.icon?.setTint(android.graphics.Color.WHITE)
+            
+            toolbar.setNavigationIcon(R.drawable.ic_close)
+            toolbar.setNavigationOnClickListener {
+                clearSelection()
+            }
+        } else {
+            toolbar.title = "Goals"
+            toolbar.menu.clear() 
+            setupToolbar(requireView()) 
+            toolbar.navigationIcon = null
         }
     }
 
@@ -147,6 +176,8 @@ class GoalsFragment : Fragment() {
             toolbar.inflateMenu(R.menu.top_bar_menu_generic) // Use generic menu or appropriate one
         }
 
+        // -----------------------------------------------------------
+
         btnNotifications.setOnClickListener {
             Toast.makeText(context, "No new notifications", Toast.LENGTH_SHORT).show()
         }
@@ -166,83 +197,110 @@ class GoalsFragment : Fragment() {
         }
     }
 
-    private fun loadGoals() {
-        database.goalDao().getAllGoalsWithProgress().observe(viewLifecycleOwner) { goalsWithProgress ->
-            goalsContainer.removeAllViews()
-            if (goalsWithProgress.isEmpty()) {
-                showEmptyState()
-            } else {
-                goalsWithProgress.forEach { goalWithProgress ->
-                    addGoalCard(goalWithProgress.goal, goalWithProgress.totalSteps, goalWithProgress.completedSteps)
-                }
-            }
-        }
-    }
-
-    private fun showEmptyState() {
-        val emptyText = TextView(requireContext()).apply {
-            text = "No goals yet. Tap + to create one!"
-            textSize = 16f
-            setPadding(32, 32, 32, 32)
-            textAlignment = View.TEXT_ALIGNMENT_CENTER
-            setTextColor(ContextCompat.getColor(requireContext(), R.color.gray))
-        }
-        goalsContainer.addView(emptyText)
-    }
-
-    private fun addGoalCard(goal: Goal, totalSteps: Int, completedSteps: Int) {
-        val view = LayoutInflater.from(requireContext()).inflate(R.layout.item_goal_card, goalsContainer, false)
-
-        val nameText = view.findViewById<TextView>(R.id.goal_name)
-        val statusText = view.findViewById<TextView>(R.id.goal_status_text)
-        val progressBar = view.findViewById<com.google.android.material.progressindicator.LinearProgressIndicator>(R.id.goal_progress_bar)
-        val stepsContainer = view.findViewById<com.google.android.flexbox.FlexboxLayout>(R.id.steps_container)
-        val iconView = view.findViewById<ImageView>(R.id.icon_target)
-        
-        nameText.text = goal.name
-        
-        // Load AI Icon if exists
-        android.util.Log.d("GoalsFragment", "Goal: ${goal.name}, IconPath: ${goal.localIconPath}")
-        if (goal.localIconPath != null) {
-            val drawable = loadIconFromFile(goal.localIconPath)
-            if (drawable != null) {
-                iconView.setImageDrawable(drawable)
-                iconView.imageTintList = null // Remove tint to show colors
-            }
-        }
-
-        val progress = if (totalSteps > 0) (completedSteps.toFloat() / totalSteps.toFloat() * 100).toInt() else 0
-        progressBar.progress = progress
-        
-        statusText.text = if (totalSteps == 0) "No steps added" else "$completedSteps/$totalSteps Steps Completed"
-
-        // Load steps and render as dots
-        database.goalStepDao().getStepsByGoal(goal.goalId).observe(viewLifecycleOwner) { steps ->
-            steps.sortedBy { it.orderIndex }.forEachIndexed { index, step ->
-                addStepDot(stepsContainer, step, index + 1)
-            }
-        }
-        
-    
-        if (completedSteps >= totalSteps && totalSteps > 0) {
-            statusText.text = "Goal Completed! 🎉"
-            statusText.setTextColor(ContextCompat.getColor(requireContext(), R.color.primary))
-        }
-
-        // Click on entire card to view details
-        // Click on entire card to view details or select
-        val cardView = view as com.google.android.material.card.MaterialCardView
-        cardView.setOnClickListener {
-            if (isSelectionMode) {
-                toggleSelection(goal.goalId, cardView)
-            } else {
-                val goalDetailFragment = GoalDetailFragment.newInstance(goal.goalId)
-                requireActivity().supportFragmentManager.beginTransaction()
-                    .replace(R.id.fragment_container, goalDetailFragment)
-                    .addToBackStack("goal_detail")
-                    .commit()
-            }
-        }
+     private fun loadGoals() {
+         database.goalDao().getAllGoalsWithProgress().observe(viewLifecycleOwner) { goalsWithProgress ->
+             // Store for global access (Select All)
+             currentGoalsList = goalsWithProgress
+             
+             goalsContainer.removeAllViews()
+             if (goalsWithProgress.isEmpty()) {
+                 showEmptyState()
+             } else {
+                 goalsWithProgress.forEach { goalWithProgress ->
+                     addGoalCard(goalWithProgress.goal, goalWithProgress.totalSteps, goalWithProgress.completedSteps)
+                 }
+             }
+         }
+     }
+ 
+     private fun showEmptyState() {
+         val emptyText = TextView(requireContext()).apply {
+             text = "No goals yet. Tap + to create one!"
+             textSize = 16f
+             setPadding(32, 32, 32, 32)
+             textAlignment = View.TEXT_ALIGNMENT_CENTER
+             setTextColor(ContextCompat.getColor(requireContext(), R.color.gray))
+         }
+         goalsContainer.addView(emptyText)
+     }
+ 
+     private fun addGoalCard(goal: Goal, totalSteps: Int, completedSteps: Int) {
+         val view = LayoutInflater.from(requireContext()).inflate(R.layout.item_goal_card, goalsContainer, false)
+         
+         // Set Tag for finding view by ID later (Select All)
+         view.tag = goal.goalId
+ 
+         val nameText = view.findViewById<TextView>(R.id.goal_name)
+         val statusText = view.findViewById<TextView>(R.id.goal_status_text)
+         val progressBar = view.findViewById<com.google.android.material.progressindicator.LinearProgressIndicator>(R.id.goal_progress_bar)
+         val stepsContainer = view.findViewById<com.google.android.flexbox.FlexboxLayout>(R.id.steps_container)
+         val iconView = view.findViewById<ImageView>(R.id.icon_target)
+         
+         nameText.text = goal.name
+         
+         // Load AI Icon if exists
+         android.util.Log.d("GoalsFragment", "Goal: ${goal.name}, IconPath: ${goal.localIconPath}")
+         if (goal.localIconPath != null) {
+             if (goal.localIconPath.startsWith("http")) {
+                 // Load Scraped Logo from URL
+                 Glide.with(requireContext())
+                     .load(goal.localIconPath)
+                     .placeholder(R.drawable.ic_rocket_minimal) // Fallback while loading
+                     .error(R.drawable.ic_rocket_minimal)
+                     .centerInside() // Logos usually need to fit inside
+                     .into(iconView)
+                 iconView.imageTintList = null // Remove tint for logos
+             } else {
+                 // Load Local SVG File
+                 val drawable = loadIconFromFile(goal.localIconPath)
+                 if (drawable != null) {
+                     iconView.setImageDrawable(drawable)
+                     iconView.imageTintList = null // Remove tint to show colors
+                 }
+             }
+         }
+ 
+         val progress = if (totalSteps > 0) (completedSteps.toFloat() / totalSteps.toFloat() * 100).toInt() else 0
+         progressBar.progress = progress
+         
+         statusText.text = if (totalSteps == 0) "No steps added" else "$completedSteps/$totalSteps Steps Completed"
+ 
+         // Load steps and render as dots
+         database.goalStepDao().getStepsByGoal(goal.goalId).observe(viewLifecycleOwner) { steps ->
+             steps.sortedBy { it.orderIndex }.forEachIndexed { index, step ->
+                 addStepDot(stepsContainer, step, index + 1)
+             }
+         }
+         
+     
+         if (completedSteps >= totalSteps && totalSteps > 0) {
+             statusText.text = "Goal Completed! 🎉"
+             statusText.setTextColor(ContextCompat.getColor(requireContext(), R.color.primary))
+         }
+ 
+         // Click on entire card to view details
+         // Click on entire card to view details or select
+         val cardView = view as com.google.android.material.card.MaterialCardView
+         
+         // Sync Selection State on Bind
+         val isSelected = selectedGoalIds.contains(goal.goalId)
+         cardView.isChecked = isSelected
+         cardView.setCardBackgroundColor(
+            if (isSelected) requireContext().getColor(R.color.primary_container) 
+            else requireContext().getColor(R.color.surface)
+         )
+         
+         cardView.setOnClickListener {
+             if (isSelectionMode) {
+                 toggleSelection(goal.goalId, cardView)
+             } else {
+                 val goalDetailFragment = GoalDetailFragment.newInstance(goal.goalId)
+                 requireActivity().supportFragmentManager.beginTransaction()
+                     .replace(R.id.fragment_container, goalDetailFragment)
+                     .addToBackStack("goal_detail")
+                     .commit()
+             }
+         }
         
         cardView.setOnLongClickListener {
             if (!isSelectionMode) {
@@ -254,16 +312,12 @@ class GoalsFragment : Fragment() {
             }
         }
         
-        // Initial visual state (if re-binding while selected)
-        val isSelected = selectedGoalIds.contains(goal.goalId)
-        cardView.isChecked = isSelected
-        cardView.setCardBackgroundColor(
-            if (isSelected) requireContext().getColor(R.color.primary_container) 
-            else requireContext().getColor(R.color.surface)
-        )
+
 
         goalsContainer.addView(view)
     }
+
+
 
     private fun addStepDot(container: com.google.android.flexbox.FlexboxLayout, step: com.example.selftracker.models.GoalStep, stepNumber: Int) {
         val dotView = LayoutInflater.from(requireContext()).inflate(R.layout.item_step_dot, container, false)
@@ -317,6 +371,7 @@ class GoalsFragment : Fragment() {
         recyclerOptions.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(context)
         
         var generatedSteps: List<com.example.selftracker.models.GeneratedStep> = emptyList()
+        var generatedGoal: com.example.selftracker.models.GeneratedGoal? = null
 
         builder.setView(dialogView)
         builder.setCancelable(true)
@@ -401,40 +456,74 @@ class GoalsFragment : Fragment() {
                                     textStatus.visibility = View.VISIBLE
                                     
                                     try {
-                                        val generatedGoal = repository.generateGoal(prompt, selectedOption.strategy)
+                                        val newGeneratedGoal = repository.generateGoal(prompt, selectedOption.strategy)
                                         
-                                        // Generate Icon
-                                        // Generate Icon
+                                        // Generate Icon with Description Context
                                         withContext(Dispatchers.Main) { textStatus.text = "Designing icon..." }
-                                        val iconSvg = repository.generateGoalIcon(generatedGoal.goalTitle)
-                                        val iconFileName = "goal_icon_${System.currentTimeMillis()}.svg"
-                                        val iconFile = java.io.File(requireContext().filesDir, iconFileName)
-                                        iconFile.writeText(iconSvg)
+                                        val iconResult = repository.generateGoalIcon(newGeneratedGoal.goalTitle, description)
                                         
+                                        var iconPath: String? = null
+                                        
+                                        if (iconResult.startsWith("http")) {
+                                            // It's a URL
+                                            iconPath = iconResult
+                                        } else {
+                                            // It's SVG content
+                                            val iconFileName = "goal_icon_${System.currentTimeMillis()}.svg"
+                                            val iconFile = java.io.File(requireContext().filesDir, iconFileName)
+                                            iconFile.writeText(iconResult)
+                                            iconPath = iconFile.absolutePath
+                                        }
+
+                                        val finalIconPath = iconPath // Capture as val for safe usage usage in Main dispatcher
+
                                         withContext(Dispatchers.Main) {
                                             btnGenerate.isEnabled = true
                                             progressGen.visibility = View.GONE
                                             textStatus.visibility = View.GONE
                                             
-                                            val layoutSteps = dialogView.findViewById<LinearLayout>(R.id.layout_generated_steps) // Dynamically find view
+                                            val layoutSteps = dialogView.findViewById<LinearLayout>(R.id.layout_generated_steps) 
                                             
                                             // Auto-fill the optimized title
-                                            editName.setText(generatedGoal.goalTitle)
-                                            editName.tag = iconFile.absolutePath // Stash path
+                                            editName.setText(newGeneratedGoal.goalTitle)
+                                            editName.tag = finalIconPath // Stash path/url
                                             
                                             // Update Icon Preview
-                                            val drawable = loadIconFromFile(iconFile.absolutePath)
-                                            if (drawable != null) {
-                                                imgIcon.setImageDrawable(drawable)
+                                            if (finalIconPath != null) {
+                                                if (finalIconPath.startsWith("http")) {
+                                                    Glide.with(context)
+                                                        .load(finalIconPath)
+                                                        .centerInside()
+                                                        .into(imgIcon)
+                                                    imgIcon.imageTintList = null
+                                                } else {
+                                                    val drawable = loadIconFromFile(finalIconPath)
+                                                    if (drawable != null) {
+                                                        imgIcon.setImageDrawable(drawable)
+                                                        imgIcon.imageTintList = null
+                                                    }
+                                                }
                                             }
 
                                             // FIX: Assign to outer variable so it can be saved
-                                            generatedSteps = generatedGoal.steps
+                                            generatedSteps = newGeneratedGoal.steps
+                                            generatedGoal = newGeneratedGoal
                                             
                                             layoutSteps.visibility = View.VISIBLE
                                             recyclerSteps.visibility = View.VISIBLE
                                             recyclerSteps.adapter = AiStepsAdapter(generatedSteps)
-                                            Toast.makeText(context, "Plan ready! Title updated.", Toast.LENGTH_SHORT).show()
+                                            
+                                            // AUTO-SAVE LOGIC (User Request: "automatically generate... don't wait for button")
+                                            performSaveGoal(
+                                                dialog, 
+                                                editName, 
+                                                editDescription, 
+                                                database, 
+                                                generatedSteps, 
+                                                generatedGoal,
+                                                finalIconPath,
+                                                null // No button to disable for auto-save, or we could pass one if needed
+                                            )
                                         }
                                     } catch (e: Exception) {
                                          withContext(Dispatchers.Main) {
@@ -463,69 +552,27 @@ class GoalsFragment : Fragment() {
         }
 
         btnSave.setOnClickListener {
-            val name = editName.text.toString().trim()
-            if (name.isNotEmpty()) {
-                val iconPath = editName.tag as? String
-                val goal = Goal(
-                    name = name,
-                    description = editDescription.text.toString().trim().takeIf { it.isNotEmpty() },
-                    localIconPath = iconPath
-                )
-                
-                viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-                    try {
-                        // 1. Save Goal
-                        val goalId = database.goalDao().insertGoal(goal)
-                        android.util.Log.d("GoalsFragment", "Saved Goal ID: $goalId")
-                        
-                        // 2. Save Generated Steps (if any)
-                        android.util.Log.d("GoalsFragment", "Generated Steps Count: ${generatedSteps.size}")
-                        
-                        if (generatedSteps.isNotEmpty()) {
-                            generatedSteps.forEachIndexed { index, genStep ->
-                                    val step = com.example.selftracker.models.GoalStep(
-                                        goalId = goalId,
-                                        name = genStep.stepName,
-                                        description = genStep.description,
-                                        orderIndex = index,
-                                        duration = genStep.durationValue,
-                                        durationUnit = genStep.durationUnit
-                                    )
-                                val stepId = database.goalStepDao().insertGoalStep(step)
-                                android.util.Log.d("GoalsFragment", "Saved Step ID: $stepId")
-                                
-                        // 3. Save Substeps
-                        val subStepsList = genStep.substeps ?: emptyList() // Safety check
-                        
-                        subStepsList.forEachIndexed { subIndex, subStepData ->
-                             val subStep = com.example.selftracker.models.GoalSubStep(
-                                 stepId = stepId,
-                                 name = subStepData.name,
-                                 orderIndex = subIndex,
-                                 duration = subStepData.durationValue,
-                                 durationUnit = subStepData.durationUnit
-                             )
-                             database.goalSubStepDao().insertGoalSubStep(subStep)
-                        }
-                            }
-                        }
-
-                        withContext(Dispatchers.Main) {
-                            dialog.dismiss()
-                            val message = if (generatedSteps.isNotEmpty()) "Goal & Roadmap Created!" else "Goal Added!"
-                            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-                        }
-                    } catch (e: Exception) {
-                        android.util.Log.e("GoalsFragment", "Error saving goal", e)
-                        withContext(Dispatchers.Main) {
-                            Toast.makeText(context, "Error saving: ${e.message}", Toast.LENGTH_LONG).show()
-                        }
-                    }
-                }
-            } else {
-                Toast.makeText(context, "Please enter a goal name", Toast.LENGTH_SHORT).show()
-            }
+             if (editName.text.toString().trim().isEmpty()) {
+                 Toast.makeText(context, "Please enter a goal name", Toast.LENGTH_SHORT).show()
+                 return@setOnClickListener
+             }
+             
+             // Disable button to prevent double-click
+             btnSave.isEnabled = false
+             btnSave.text = "Saving..."
+             
+             performSaveGoal(
+                dialog, 
+                editName, 
+                editDescription, 
+                database, 
+                generatedSteps, 
+                generatedGoal,
+                editName.tag as? String,
+                btnSave
+            )
         }
+
 
         btnClose.setOnClickListener { dialog.dismiss() }
         dialog.show()
@@ -605,7 +652,7 @@ class GoalsFragment : Fragment() {
             val svg = com.caverock.androidsvg.SVG.getFromInputStream(fis)
             
             // Set high resolution for rendering (e.g., 512x512) to avoid blurriness
-            // The SVG is likely 24x24 from the prompt, but we want it crisp on screen.
+            // The SVG allows us to render it at ANY size. 512 is plenty for phones.
             val size = 512f
             svg.documentWidth = size
             svg.documentHeight = size
@@ -617,7 +664,7 @@ class GoalsFragment : Fragment() {
             )
             
             val canvas = android.graphics.Canvas(bitmap)
-            // Optional: Clear canvas if needed, but new bitmap is transparent
+            // Render directly to the 512x512 canvas
             svg.renderToCanvas(canvas)
             
             android.graphics.drawable.BitmapDrawable(resources, bitmap)
@@ -628,4 +675,140 @@ class GoalsFragment : Fragment() {
         }
     }
 
+    private fun performSaveGoal(
+        dialog: AlertDialog,
+        editName: EditText,
+        editDescription: EditText,
+        database: SelfTrackerDatabase,
+        generatedSteps: List<com.example.selftracker.models.GeneratedStep>,
+        generatedGoal: com.example.selftracker.models.GeneratedGoal?,
+        iconPathArg: String?,
+        btnSave: Button?
+    ) {
+        val name = editName.text.toString().trim()
+        val description = editDescription.text.toString().trim()
+        
+        if (name.isEmpty()) return
+
+        // Show simplified saving state
+        Toast.makeText(dialog.context, "Saving Goal...", Toast.LENGTH_SHORT).show()
+
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                var finalIconPath = iconPathArg
+                
+                // FALLBACK: If no icon from AI/Tag, try to scrape one now based on name
+                if (finalIconPath == null) {
+                    try {
+                        val repository = com.example.selftracker.repository.GoalGeneratorRepository()
+                        // Use the main generation logic which includes Devicon support (Priority 1)
+                        // This ensures "Python" gets the official SVG from jsDelivr, downloaded as content.
+                        val iconResult = repository.generateGoalIcon(name, description)
+                        
+                        if (iconResult.startsWith("http")) {
+                             // It's a URL (e.g. Clearbit)
+                             finalIconPath = iconResult
+                        } else {
+                             // It's raw SVG content (Devicon or Local Fallback)
+                             // Save to local file so we can load it with our high-res loader
+                             val iconFileName = "goal_icon_${System.currentTimeMillis()}.svg"
+                             val iconFile = java.io.File(requireContext().filesDir, iconFileName)
+                             iconFile.writeText(iconResult)
+                             finalIconPath = iconFile.absolutePath
+                        }
+                        android.util.Log.d("GoalsFragment", "Auto-generated logo for '$name': $finalIconPath")
+                    } catch (e: Exception) {
+                         android.util.Log.e("GoalsFragment", "Auto-generation failed", e)
+                    }
+                }
+
+                // 1. Save Goal
+                val goal = Goal(
+                    name = name,
+                    description = description.takeIf { it.isNotEmpty() },
+                    localIconPath = finalIconPath
+                )
+                val goalId = database.goalDao().insertGoal(goal)
+                
+                // 2. Save Generated Steps (if any)
+                if (generatedSteps.isNotEmpty()) {
+                    generatedSteps.forEachIndexed { index, genStep ->
+                            val step = com.example.selftracker.models.GoalStep(
+                                goalId = goalId,
+                                name = genStep.stepName,
+                                description = genStep.description,
+                                orderIndex = index,
+                                duration = genStep.durationValue,
+                                durationUnit = genStep.durationUnit
+                            )
+                        val stepId = database.goalStepDao().insertGoalStep(step)
+                        
+                        // Save Step Resources
+                        genStep.resources?.forEach { res ->
+                            val resource = com.example.selftracker.models.GoalResource(
+                                goalId = goalId,
+                                stepId = stepId,
+                                title = res.title,
+                                url = res.url,
+                                resourceType = res.type
+                            )
+                            database.goalResourceDao().insertResource(resource)
+                        }
+                        
+                        // 3. Save Substeps
+                        val subStepsList = genStep.substeps ?: emptyList() 
+                        subStepsList.forEachIndexed { subIndex, subStepData ->
+                             val subStep = com.example.selftracker.models.GoalSubStep(
+                                 stepId = stepId,
+                                 name = subStepData.name,
+                                 orderIndex = subIndex,
+                                 duration = subStepData.durationValue,
+                                 durationUnit = subStepData.durationUnit
+                             )
+                             val subStepId = database.goalSubStepDao().insertGoalSubStep(subStep)
+                             
+                             // Save Substep Resources
+                             subStepData.resources?.forEach { res ->
+                                 val resource = com.example.selftracker.models.GoalResource(
+                                     goalId = goalId,
+                                     stepId = stepId,
+                                     subStepId = subStepId,
+                                     title = res.title,
+                                     url = res.url,
+                                     resourceType = res.type
+                                 )
+                                 database.goalResourceDao().insertResource(resource)
+                             }
+                        }
+                    }
+                }
+                
+                // 4. Save Goal Level Resources
+                val resourcesList = generatedGoal?.resources ?: emptyList()
+                if (resourcesList.isNotEmpty()) {
+                     resourcesList.forEach { res ->
+                         val resource = com.example.selftracker.models.GoalResource(
+                             goalId = goalId,
+                             title = res.title,
+                             url = res.url,
+                             resourceType = res.type
+                         )
+                         database.goalResourceDao().insertResource(resource)
+                     }
+                }
+
+                withContext(Dispatchers.Main) {
+                    dialog.dismiss()
+                    Toast.makeText(dialog.context, "Goal Created Successfully!", Toast.LENGTH_SHORT).show()
+                    loadGoals() // Refresh list
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                     btnSave?.isEnabled = true
+                     btnSave?.text = "Create Goal"
+                     Toast.makeText(dialog.context, "Failed to save goal: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
 }

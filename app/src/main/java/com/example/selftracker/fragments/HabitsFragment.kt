@@ -192,13 +192,14 @@ class HabitsFragment : Fragment() {
             toolbar.inflateMenu(R.menu.menu_selection) // Assuming a generic selection menu or we create it dynamically
             
             // If menu_selection doesn't exist yet, we can add delete item dynamically
-            if (toolbar.menu.findItem(R.id.action_delete_selected) == null) {
-                 toolbar.menu.add(0, R.id.action_delete_selected, 0, "Delete").setIcon(R.drawable.ic_delete).setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_ALWAYS)
-            }
+            // But we should rely on XML inflation if possible. XML has Delete and Select All now.
             
-            // Tint Delete Icon White
+            // Tint Icons White
             val deleteItem = toolbar.menu.findItem(R.id.action_delete_selected)
             deleteItem?.icon?.setTint(android.graphics.Color.WHITE)
+            
+            val selectAllItem = toolbar.menu.findItem(R.id.action_select_all)
+            selectAllItem?.icon?.setTint(android.graphics.Color.WHITE)
             
             toolbar.setNavigationIcon(R.drawable.ic_close)
             toolbar.setNavigationOnClickListener {
@@ -216,6 +217,14 @@ class HabitsFragment : Fragment() {
          return when (item.itemId) {
              R.id.action_delete_selected -> {
                  showDeleteSelectedConfirmation()
+                 true
+             }
+             R.id.action_select_all -> {
+                 if (habitAdapter.isAllSelected(allHabits.size)) {
+                     habitAdapter.deselectAll()
+                 } else {
+                     habitAdapter.selectAll(allHabits)
+                 }
                  true
              }
              else -> false

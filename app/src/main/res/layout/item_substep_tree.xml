@@ -72,6 +72,15 @@
 
             </LinearLayout>
 
+            <!-- Resources Container -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recycler_substep_resources"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:paddingTop="8dp"
+                android:visibility="gone" />
+
         </LinearLayout>
 
         <!-- Menu Button -->

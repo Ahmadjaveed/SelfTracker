@@ -127,6 +127,15 @@
             android:layout_marginTop="12dp"
             android:visibility="gone" />
 
+        <!-- Resources Container -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recycler_step_resources"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingVertical="8dp"
+            android:visibility="gone" />
+
         <!-- Add Substep Button -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_add_substep"

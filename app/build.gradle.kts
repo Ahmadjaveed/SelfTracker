@@ -27,7 +27,12 @@ android {
 
         val apiKey = localProperties.getProperty("GEMINI_API_KEY") ?: project.findProperty("GEMINI_API_KEY") ?: ""
 
+        val openRouterKey1 = localProperties.getProperty("OPENROUTER_API_KEY_1") ?: ""
+        val openRouterKey2 = localProperties.getProperty("OPENROUTER_API_KEY_2") ?: ""
+
         buildConfigField("String", "GEMINI_API_KEY", "\"$apiKey\"")
+        buildConfigField("String", "OPENROUTER_API_KEY_1", "\"$openRouterKey1\"")
+        buildConfigField("String", "OPENROUTER_API_KEY_2", "\"$openRouterKey2\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -100,4 +105,10 @@ dependencies {
 
     // AndroidSVG for dynamic SVG loading
     implementation("com.caverock:androidsvg-aar:1.4")
+
+    // Glide for Image Loading
+    implementation("com.github.bumptech.glide:glide:4.16.0")
+
+    // Jsoup for Web Scraping (Metadata)
+    implementation("org.jsoup:jsoup:1.17.2")
 }

@@ -16,5 +16,6 @@ data class Habit(
     val bestStreak: Int = 0,
     val lastCompletedDate: String? = null,
     val reminderTime: Long? = null,
-    val description: String = ""
+    val description: String = "",
+    val iconPath: String? = null // Added for Smart Logo support
 )
