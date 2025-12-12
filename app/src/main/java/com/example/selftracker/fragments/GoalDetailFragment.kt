@@ -1194,13 +1194,47 @@ class GoalDetailFragment : Fragment() {
         val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_add_goal, null)
         val editGoalName = dialogView.findViewById<EditText>(R.id.edit_goal_name)
         val editGoalDescription = dialogView.findViewById<EditText>(R.id.edit_goal_description)
+        val btnEnhance = dialogView.findViewById<ImageView>(R.id.btn_enhance_description)
+        val imgIcon = dialogView.findViewById<ImageView>(R.id.img_goal_icon)
         val btnSave = dialogView.findViewById<Button>(R.id.btn_save_goal)
         val btnClose = dialogView.findViewById<ImageView>(R.id.btn_close_dialog)
+
+        // AI UI Elements
+        val btnGenerate = dialogView.findViewById<Button>(R.id.btn_generate_ai_steps)
+        val progressGen = dialogView.findViewById<View>(R.id.progress_ai_generation)
+        val textStatus = dialogView.findViewById<TextView>(R.id.text_ai_status)
+        val recyclerOptions = dialogView.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.recycler_plan_options)
+        val recyclerSteps = dialogView.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.recycler_generated_steps)
+        val layoutSteps = dialogView.findViewById<LinearLayout>(R.id.layout_generated_steps)
+
+        recyclerSteps.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(requireContext())
+        recyclerOptions.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(requireContext())
+        
+        var generatedSteps: List<com.example.selftracker.models.GeneratedStep> = emptyList()
+        var newIconPath: String? = goal.localIconPath // Start with current icon
 
         // Pre-fill existing data
         editGoalName.setText(goal.name)
         editGoalDescription.setText(goal.description ?: "")
         
+        // Load current icon
+        if (newIconPath != null) {
+            if (newIconPath!!.startsWith("http")) {
+                 Glide.with(requireContext()).load(newIconPath).centerInside().into(imgIcon)
+                 imgIcon.imageTintList = null
+            } else {
+                 viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+                     val dr = loadIconFromFile(newIconPath)
+                     withContext(Dispatchers.Main) {
+                         if (dr != null) {
+                             imgIcon.setImageDrawable(dr)
+                             imgIcon.imageTintList = null
+                         }
+                     }
+                 }
+            }
+        }
+
         btnSave.text = "Update Goal"
 
         val dialog = AlertDialog.Builder(requireContext())
@@ -1209,22 +1243,189 @@ class GoalDetailFragment : Fragment() {
 
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
 
+        // 1. AI Enhance Description Logic
+        btnEnhance.setOnClickListener {
+             val originalText = editGoalDescription.text.toString().trim()
+             if (originalText.isNotEmpty()) {
+                 textStatus.text = "Enhancing..."
+                 textStatus.visibility = View.VISIBLE
+                 btnEnhance.isEnabled = false
+                 btnEnhance.imageAlpha = 128
+                 
+                 viewLifecycleOwner.lifecycleScope.launch {
+                     try {
+                         val repository = com.example.selftracker.repository.GoalGeneratorRepository()
+                         val enhanced = repository.enhanceGoalDescription(originalText)
+                         withContext(Dispatchers.Main) {
+                             editGoalDescription.setText(enhanced)
+                             Toast.makeText(requireContext(), "Enhanced! ✨", Toast.LENGTH_SHORT).show()
+                             btnEnhance.isEnabled = true
+                             btnEnhance.imageAlpha = 255
+                             textStatus.visibility = View.GONE
+                         }
+                     } catch (e: Exception) {
+                         withContext(Dispatchers.Main) {
+                             btnEnhance.isEnabled = true
+                             btnEnhance.imageAlpha = 255
+                             textStatus.visibility = View.GONE
+                         }
+                     }
+                 }
+             }
+        }
+
+        // 2. AI Generate Logic
+        btnGenerate.setOnClickListener {
+            val name = editGoalName.text.toString().trim()
+            val description = editGoalDescription.text.toString().trim()
+            
+            if (name.isNotEmpty()) {
+                btnGenerate.isEnabled = false
+                progressGen.visibility = View.VISIBLE
+                textStatus.text = "Drafting strategies..."
+                textStatus.visibility = View.VISIBLE
+                recyclerSteps.visibility = View.GONE
+                recyclerOptions.visibility = View.GONE
+                
+                viewLifecycleOwner.lifecycleScope.launch {
+                    try {
+                        val prompt = if (description.isNotEmpty()) "$name. Context: $description" else name
+                        val repository = com.example.selftracker.repository.GoalGeneratorRepository()
+                        
+                        val options = repository.generatePlanOptions(prompt)
+                        
+                        withContext(Dispatchers.Main) {
+                            progressGen.visibility = View.GONE
+                            textStatus.text = "Select a strategy:"
+                            recyclerOptions.visibility = View.VISIBLE
+                            recyclerOptions.adapter = AiPlanOptionsAdapter(options) { selectedOption ->
+                                viewLifecycleOwner.lifecycleScope.launch {
+                                    recyclerOptions.visibility = View.GONE
+                                    progressGen.visibility = View.VISIBLE
+                                    textStatus.text = "Building plan..."
+                                    textStatus.visibility = View.VISIBLE
+                                    
+                                    try {
+                                        val newGeneratedGoal = repository.generateGoal(prompt, selectedOption.strategy)
+                                        
+                                        // Generate new icon logic
+                                        withContext(Dispatchers.Main) { textStatus.text = "Checking icons..." }
+                                        val iconResult = repository.generateGoalIcon(newGeneratedGoal.goalTitle, description)
+                                        
+                                        var generatedIconPath: String? = null
+                                        if (iconResult.startsWith("http")) {
+                                            generatedIconPath = iconResult
+                                        } else {
+                                            val iconFileName = "goal_icon_${System.currentTimeMillis()}.svg"
+                                            val iconFile = java.io.File(requireContext().filesDir, iconFileName)
+                                            iconFile.writeText(iconResult)
+                                            generatedIconPath = iconFile.absolutePath
+                                        }
+                                        newIconPath = generatedIconPath // Update for saving
+
+                                        withContext(Dispatchers.Main) {
+                                            editGoalName.setText(newGeneratedGoal.goalTitle)
+                                            generatedSteps = newGeneratedGoal.steps // Store for saving
+                                            
+                                            // Update Icon UI
+                                            if (newIconPath != null) {
+                                                if (newIconPath!!.startsWith("http")) {
+                                                     Glide.with(requireContext()).load(newIconPath).centerInside().into(imgIcon)
+                                                     imgIcon.imageTintList = null
+                                                } else {
+                                                     viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+                                                         val dr = loadIconFromFile(newIconPath)
+                                                         withContext(Dispatchers.Main) {
+                                                             if (dr != null) {
+                                                                 imgIcon.setImageDrawable(dr)
+                                                                 imgIcon.imageTintList = null
+                                                             }
+                                                         }
+                                                     }
+                                                }
+                                            }
+
+                                            layoutSteps.visibility = View.VISIBLE
+                                            recyclerSteps.visibility = View.VISIBLE
+                                            recyclerSteps.adapter = AiStepsAdapter(generatedSteps)
+                                            
+                                            textStatus.visibility = View.GONE
+                                            progressGen.visibility = View.GONE
+                                            btnGenerate.isEnabled = true
+                                        }
+                                    } catch (e: Exception) {
+                                         withContext(Dispatchers.Main) {
+                                            btnGenerate.isEnabled = true
+                                            progressGen.visibility = View.GONE
+                                            textStatus.text = "Failed: ${e.message}"
+                                         }
+                                    }
+                                }
+                            }
+                        }
+                    } catch (e: Exception) {
+                        withContext(Dispatchers.Main) {
+                            btnGenerate.isEnabled = true
+                            progressGen.visibility = View.GONE
+                            textStatus.visibility = View.GONE
+                            Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }
+            }
+        }
+
         btnSave.setOnClickListener {
             val name = editGoalName.text.toString().trim()
             val description = editGoalDescription.text.toString().trim()
 
             if (name.isNotEmpty()) {
                 viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+                    // 1. Update Goal Details
                     val updatedGoal = goal.copy(
                         name = name,
-                        description = if (description.isNotEmpty()) description else null
+                        description = if (description.isNotEmpty()) description else null,
+                        localIconPath = newIconPath
                     )
                     database.goalDao().updateGoal(updatedGoal)
+                    
+                    // 2. Insert NEW steps if generated
+                    if (generatedSteps.isNotEmpty()) {
+                        // Get current steps count to append correctly
+                        val currentSteps = database.goalStepDao().getStepsByGoal(goal.goalId).value ?: emptyList()
+                        var startIndex = currentSteps.size
+                        
+                        generatedSteps.forEach { genStep ->
+                            val step = com.example.selftracker.models.GoalStep(
+                                goalId = goal.goalId,
+                                name = genStep.stepName,
+                                description = genStep.description,
+                                orderIndex = startIndex++,
+                                duration = genStep.durationValue,
+                                durationUnit = genStep.durationUnit
+                            )
+                            val stepId = database.goalStepDao().insertGoalStep(step)
+                            
+                            // Save Substeps
+                            genStep.substeps?.forEachIndexed { subIndex, genSubStep ->
+                                val subStep = com.example.selftracker.models.GoalSubStep(
+                                    stepId = stepId,
+                                    name = genSubStep.name,
+                                    orderIndex = subIndex,
+                                    duration = genSubStep.durationValue, // Use actual duration from AI
+                                    durationUnit = genSubStep.durationUnit // Use actual unit from AI
+                                )
+                                database.goalSubStepDao().insertGoalSubStep(subStep)
+                            }
+                        }
+                    }
                     
                     withContext(Dispatchers.Main) {
                          // Update UI
                          goalTitle.text = updatedGoal.name
                          goalDescription.text = updatedGoal.description ?: "No description"
+                         loadGoalDetails() // Reload steps list
+                         Toast.makeText(requireContext(), "Goal Updated!", Toast.LENGTH_SHORT).show()
                     }
                 }
                 dialog.dismiss()
@@ -1260,6 +1461,79 @@ class GoalDetailFragment : Fragment() {
     private fun showEmptyStepsState() {
         val emptyView = LayoutInflater.from(requireContext()).inflate(R.layout.empty_steps_state, stepsTreeContainer, false)
         stepsTreeContainer.addView(emptyView)
+    }
+
+    // ADAPTERS FOR AI DIALOG (Copied from GoalsFragment to support Edit Mode)
+    private fun loadIconFromFile(path: String?): android.graphics.drawable.Drawable? {
+        if (path == null) return null
+        val file = java.io.File(path)
+        if (!file.exists()) {
+            return null
+        }
+        return try {
+            val fis = java.io.FileInputStream(file)
+            val svg = com.caverock.androidsvg.SVG.getFromInputStream(fis)
+            val size = 512f
+            svg.documentWidth = size
+            svg.documentHeight = size
+            val bitmap = android.graphics.Bitmap.createBitmap(size.toInt(), size.toInt(), android.graphics.Bitmap.Config.ARGB_8888)
+            val canvas = android.graphics.Canvas(bitmap)
+            svg.renderToCanvas(canvas)
+            android.graphics.drawable.BitmapDrawable(resources, bitmap)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    inner class AiPlanOptionsAdapter(
+        private val options: List<com.example.selftracker.models.PlanOption>,
+        private val onOptionClick: (com.example.selftracker.models.PlanOption) -> Unit
+    ) : androidx.recyclerview.widget.RecyclerView.Adapter<AiPlanOptionsAdapter.ViewHolder>() {
+        inner class ViewHolder(itemView: View) : androidx.recyclerview.widget.RecyclerView.ViewHolder(itemView) {
+            val title: TextView = itemView.findViewById(R.id.text_option_title)
+            val description: TextView = itemView.findViewById(R.id.text_option_description)
+        }
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+            val view = LayoutInflater.from(parent.context).inflate(R.layout.item_ai_plan_option, parent, false)
+            return ViewHolder(view)
+        }
+        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+            val option = options[position]
+            holder.title.text = option.title
+            holder.description.text = option.description
+            holder.itemView.setOnClickListener { onOptionClick(option) }
+        }
+        override fun getItemCount() = options.size
+    }
+
+    inner class AiStepsAdapter(private val steps: List<com.example.selftracker.models.GeneratedStep>) : 
+        androidx.recyclerview.widget.RecyclerView.Adapter<AiStepsAdapter.ViewHolder>() {
+        inner class ViewHolder(view: View) : androidx.recyclerview.widget.RecyclerView.ViewHolder(view) {
+            val stepNumber: TextView = view.findViewById(R.id.text_step_number)
+            val stepName: TextView = view.findViewById(R.id.text_step_name)
+            val stepDescription: TextView = view.findViewById(R.id.text_step_description)
+            val duration: TextView = view.findViewById(R.id.text_step_duration)
+            val substeps: TextView = view.findViewById(R.id.text_substeps)
+        }
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+            val view = LayoutInflater.from(parent.context).inflate(R.layout.item_ai_step_preview, parent, false)
+            return ViewHolder(view)
+        }
+        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+            val step = steps[position]
+            holder.stepNumber.text = (position + 1).toString()
+            holder.stepName.text = step.stepName
+            holder.stepDescription.text = step.description
+            holder.duration.text = "${step.durationValue} ${step.durationUnit}"
+            val subSteps = step.substeps ?: emptyList()
+            if (subSteps.isNotEmpty()) {
+                holder.substeps.visibility = View.VISIBLE
+                holder.substeps.text = subSteps.joinToString("\n• ", prefix = "• ")
+            } else {
+                holder.substeps.visibility = View.GONE
+            }
+        }
+        override fun getItemCount() = steps.size
     }
 
     companion object {

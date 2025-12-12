@@ -88,18 +88,18 @@ class GoalGeneratorRepository {
               "steps": [
                 {
                   "step_name": "string",
-                  "description": "string", // Brief explanation of the step
-                  "duration_value": int,
-                  "duration_unit": "days", // or weeks/months
+                  "description": "string",
+                  "duration_value": 0,
+                  "duration_unit": "days",
                   "substeps": [
                     {
                       "substep_name": "string",
-                      "duration_value": int, 
+                      "duration_value": 0, 
                       "duration_unit": "days",
-                      "resources": [ {"title": "string", "url": "string", "type": "string"} ] // Optional: Add 1 specific, high-quality resource (video/article) for this substep if critical.
+                      "resources": [ {"title": "string", "url": "string", "type": "string"} ]
                     }
                   ], 
-                  "resources": [ // Provide 1-2 SPECIFIC resources for this step
+                  "resources": [
                     {
                       "title": "string",
                       "url": "string",
@@ -108,16 +108,11 @@ class GoalGeneratorRepository {
                   ]
                 }
               ],
-              "resources": [ // Provide 3-5 HIGH-QUALITY, TOP-RATED resources for the overall goal.
-                // CRITICAL INSTRUCTIONS FOR RESOURCES:
-                // 1. URLs MUST be direct links to specific content.
-                // 2. VIDEO URLs must be playble (e.g. "https://www.youtube.com/watch?v=dQw4w9WgXcQ"). 
-                // 3. DO NOT return search result pages (e.g. "youtube.com/results?search_query=...").
-                // 4. If you cannot find a specific URL, provide a link to a specific Repository or Wikipedia page instead.
+              "resources": [
                 {
-                  "title": "string (e.g. 'Mastering Kotlin Coroutines - Crash Course')",
-                  "url": "string (e.g. 'https://www.youtube.com/watch?v=example')",
-                  "type": "string (VIDEO, ARTICLE, COURSE, or LINK)"
+                  "title": "string",
+                  "url": "string",
+                  "type": "string"
                 }
               ]
             }
@@ -199,44 +194,20 @@ class GoalGeneratorRepository {
             }
         }
 
-        // 2. AI Smart Domain Prediction (Priority 2)
-        // User wants us to identify the site context using AI, then scrap that specific domain.
-        try {
-            val smartDomain = predictDomainWithAI(goalName, description)
-            if (smartDomain != null && smartDomain != "null" && smartDomain.contains(".")) {
-                log("AI Identified Domain: $smartDomain")
-                
-                // Construct High-Res Clearbit URL for the identified domain
-                val highResUrl = "https://logo.clearbit.com/$smartDomain?size=512"
-                
-                // Verify if it exists (HEAD request)
-                val exists = withContext(Dispatchers.IO) {
-                    try {
-                        val request = okhttp3.Request.Builder().url(highResUrl).head().build()
-                        client.newCall(request).execute().use { it.isSuccessful }
-                    } catch (e: Exception) { false }
-                }
-                
-                if (exists) {
-                    log("Found Smart Icon: $highResUrl")
-                    return highResUrl
-                } else {
-                     log("Smart Domain ($smartDomain) has no Clearbit logo.")
-                }
-            }
-        } catch (e: Exception) {
-            logError("Smart Domain Prediction failed", e)
+        // 1.5. Direct CDN Fallback (Priority 1.5 - Fast & High Quality)
+        // Try to guess the slug directly (e.g. "Google" -> "google") from SimpleIcons/Devicon
+        val cdnIconUrl = findDirectCdnIcon(goalName)
+        if (cdnIconUrl != null) {
+            log("Found Direct CDN Icon: $cdnIconUrl")
+            // Download content immediately to cache/save it as SVG
+            val svgContent = downloadUrlContent(cdnIconUrl)
+            if (svgContent != null) return svgContent
         }
 
-        // 3. Fallback to Standard Scraping (Name-based)
-        try {
-            val scrapedUrl = scrapeLogoUrl(goalName)
-            if (scrapedUrl != null) {
-                return scrapedUrl 
-            }
-        } catch (e: Exception) {
-            logError("Standard scraping failed", e)
-        }
+        // 2. AI Smart Domain Prediction (Priority 2) - REMOVED strictly per user request (was using Clearbit)
+        // We skip trying to blindly guess domains to avoid blurry raster images.
+
+        // 3. Fallback to Standard Scraping (Name-based) - REMOVED (was using Clearbit Autocomplete)
          
         // 4. Last Resort: Local Generic Icon
         return generateLocalIcon()
@@ -412,6 +383,68 @@ class GoalGeneratorRepository {
         }
     }
 
+    private suspend fun findDirectCdnIcon(query: String): String? {
+        val slug = query.lowercase().replace(" ", "").replace(".", "dot").replace("++", "plusplus").replace("#", "sharp")
+        // Common mappings
+        val finalSlug = when(slug) {
+             "c++" -> "cplusplus"
+             "c#" -> "csharp"
+             "nodejs" -> "nodedotjs"
+             else -> slug
+        }
+        
+        // 1. Try Simple Icons (very comprehensive for brands)
+        // https://cdn.jsdelivr.net/npm/simple-icons@v14/icons/[slug].svg
+        val simpleIconUrl = "https://cdn.jsdelivr.net/npm/simple-icons@v14/icons/$finalSlug.svg"
+        
+        // 2. Try Devicon (great for tech)
+        // https://cdn.jsdelivr.net/gh/devicons/devicon/icons/[slug]/[slug]-original.svg
+        val devIconUrl = "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/$finalSlug/$finalSlug-original.svg"
+        
+        return withContext(Dispatchers.IO) {
+            try {
+                // 1. Try Devicon (Best for tech, colored)
+                // https://cdn.jsdelivr.net/gh/devicons/devicon/icons/[slug]/[slug]-original.svg
+                val devIconUrl = "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/$finalSlug/$finalSlug-original.svg"
+                val request1 = okhttp3.Request.Builder().url(devIconUrl).head().build()
+                val exists1 = client.newCall(request1).execute().use { it.isSuccessful }
+                if (exists1) return@withContext devIconUrl
+
+                // 2. Try Vector Logo Zone (Best for brands, colored)
+                // https://www.vectorlogo.zone/logos/[slug]/[slug]-icon.svg
+                val vectorLogoUrl = "https://www.vectorlogo.zone/logos/$finalSlug/$finalSlug-icon.svg"
+                val request2 = okhttp3.Request.Builder().url(vectorLogoUrl).head().build()
+                val exists2 = client.newCall(request2).execute().use { it.isSuccessful }
+                if (exists2) return@withContext vectorLogoUrl
+                
+                // 2b. Try Vector Logo Zone (Official variant)
+                val vectorLogoUrl2 = "https://www.vectorlogo.zone/logos/$finalSlug/$finalSlug-official.svg"
+                val request2b = okhttp3.Request.Builder().url(vectorLogoUrl2).head().build()
+                val exists2b = client.newCall(request2b).execute().use { it.isSuccessful }
+                if (exists2b) return@withContext vectorLogoUrl2
+
+                // 3. Try FlagCDN (for Country Codes e.g. "US", "FR", "IN")
+                if (finalSlug.length == 2) {
+                     val flagUrl = "https://flagcdn.com/${finalSlug}.svg"
+                     val requestFlag = okhttp3.Request.Builder().url(flagUrl).head().build()
+                     val existsFlag = client.newCall(requestFlag).execute().use { it.isSuccessful }
+                     if (existsFlag) return@withContext flagUrl
+                }
+
+                // 4. Try Simple Icons (Great coverage but Monochrome/Black)
+                // https://cdn.jsdelivr.net/npm/simple-icons@v14/icons/[slug].svg
+                val simpleIconUrl = "https://cdn.jsdelivr.net/npm/simple-icons@v14/icons/$finalSlug.svg"
+                val request4 = okhttp3.Request.Builder().url(simpleIconUrl).head().build()
+                val exists4 = client.newCall(request4).execute().use { it.isSuccessful }
+                if (exists4) return@withContext simpleIconUrl
+                
+                null
+            } catch (e: Exception) {
+               null
+            }
+        }
+    }
+
     suspend fun generateMotivation(habit: String): String {
         log("generateMotivation called for: $habit")
         
@@ -530,17 +563,16 @@ class GoalGeneratorRepository {
             // Tier 1: High quality free models (Try these first)
             "google/gemini-2.0-flash-exp:free",
             "meta-llama/llama-3.2-3b-instruct:free", // Fast & reliable
-            "google/gemma-2-9b-it:free",
-            "microsoft/phi-3-mini-128k-instruct:free",
+            "liquid/lfm-40b:free", // High quality, often available
             
             // Tier 2: Larger experimental models (Good but maybe rate limited)
             "meta-llama/llama-3.3-70b-instruct:free",
-            "qwen/qwen-2.5-72b-instruct:free",
-            "deepseek/deepseek-chat:free",
+            "nvidia/nemotron-nano-12b-v2-vl:free",
+            "nex-agi/deepseek-v3.1-nex-n1:free",
+            "allenai/olmo-3-32b-think:free",
             
             // Tier 3: Solid backups
             "mistralai/mistral-7b-instruct:free",
-            "openchat/openchat-7:free",
             "nousresearch/hermes-3-llama-3.1-405b:free"
         )
 

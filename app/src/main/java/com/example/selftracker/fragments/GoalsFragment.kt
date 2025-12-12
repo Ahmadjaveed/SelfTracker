@@ -24,8 +24,13 @@ class GoalsFragment : Fragment() {
     private lateinit var database: SelfTrackerDatabase
     private lateinit var toolbar: androidx.appcompat.widget.Toolbar
     
+    // In-memory cache for generated icons (Key: Path, Value: Drawable)
+    // Max 10MB or 50 icons, whichever comes first roughly. Using explicit count for simplicity.
+    private val iconCache = android.util.LruCache<String, android.graphics.drawable.BitmapDrawable>(50)
+    
     // Selection Mode
     private val selectedGoalIds = mutableSetOf<Long>()
+    private var allStepsMap: Map<Long, List<com.example.selftracker.models.GoalStep>> = emptyMap()
     private var isSelectionMode = false
 
     private fun toggleSelection(goalId: Long, cardView: com.google.android.material.card.MaterialCardView) {
@@ -198,17 +203,27 @@ class GoalsFragment : Fragment() {
     }
 
      private fun loadGoals() {
+         // 1. Load All Steps (Bulk Optimization)
+         database.goalStepDao().getAllSteps().observe(viewLifecycleOwner) { allSteps ->
+             allStepsMap = allSteps.groupBy { it.goalId }
+             refreshGoalsUI()
+         }
+
+         // 2. Load Goals
          database.goalDao().getAllGoalsWithProgress().observe(viewLifecycleOwner) { goalsWithProgress ->
-             // Store for global access (Select All)
              currentGoalsList = goalsWithProgress
-             
-             goalsContainer.removeAllViews()
-             if (goalsWithProgress.isEmpty()) {
-                 showEmptyState()
-             } else {
-                 goalsWithProgress.forEach { goalWithProgress ->
-                     addGoalCard(goalWithProgress.goal, goalWithProgress.totalSteps, goalWithProgress.completedSteps)
-                 }
+             refreshGoalsUI()
+         }
+     }
+
+     private fun refreshGoalsUI() {
+         goalsContainer.removeAllViews()
+         if (currentGoalsList.isEmpty()) {
+             showEmptyState()
+         } else {
+             currentGoalsList.forEach { goalWithProgress ->
+                 val steps = allStepsMap[goalWithProgress.goal.goalId] ?: emptyList()
+                 addGoalCard(goalWithProgress.goal, goalWithProgress.totalSteps, goalWithProgress.completedSteps, steps)
              }
          }
      }
@@ -224,83 +239,104 @@ class GoalsFragment : Fragment() {
          goalsContainer.addView(emptyText)
      }
  
-     private fun addGoalCard(goal: Goal, totalSteps: Int, completedSteps: Int) {
-         val view = LayoutInflater.from(requireContext()).inflate(R.layout.item_goal_card, goalsContainer, false)
-         
-         // Set Tag for finding view by ID later (Select All)
-         view.tag = goal.goalId
- 
-         val nameText = view.findViewById<TextView>(R.id.goal_name)
-         val statusText = view.findViewById<TextView>(R.id.goal_status_text)
-         val progressBar = view.findViewById<com.google.android.material.progressindicator.LinearProgressIndicator>(R.id.goal_progress_bar)
-         val stepsContainer = view.findViewById<com.google.android.flexbox.FlexboxLayout>(R.id.steps_container)
-         val iconView = view.findViewById<ImageView>(R.id.icon_target)
-         
-         nameText.text = goal.name
-         
-         // Load AI Icon if exists
-         android.util.Log.d("GoalsFragment", "Goal: ${goal.name}, IconPath: ${goal.localIconPath}")
-         if (goal.localIconPath != null) {
-             if (goal.localIconPath.startsWith("http")) {
-                 // Load Scraped Logo from URL
-                 Glide.with(requireContext())
-                     .load(goal.localIconPath)
-                     .placeholder(R.drawable.ic_rocket_minimal) // Fallback while loading
-                     .error(R.drawable.ic_rocket_minimal)
-                     .centerInside() // Logos usually need to fit inside
-                     .into(iconView)
-                 iconView.imageTintList = null // Remove tint for logos
-             } else {
-                 // Load Local SVG File
-                 val drawable = loadIconFromFile(goal.localIconPath)
-                 if (drawable != null) {
-                     iconView.setImageDrawable(drawable)
-                     iconView.imageTintList = null // Remove tint to show colors
-                 }
-             }
-         }
- 
-         val progress = if (totalSteps > 0) (completedSteps.toFloat() / totalSteps.toFloat() * 100).toInt() else 0
-         progressBar.progress = progress
-         
-         statusText.text = if (totalSteps == 0) "No steps added" else "$completedSteps/$totalSteps Steps Completed"
- 
-         // Load steps and render as dots
-         database.goalStepDao().getStepsByGoal(goal.goalId).observe(viewLifecycleOwner) { steps ->
-             steps.sortedBy { it.orderIndex }.forEachIndexed { index, step ->
-                 addStepDot(stepsContainer, step, index + 1)
-             }
-         }
-         
-     
-         if (completedSteps >= totalSteps && totalSteps > 0) {
-             statusText.text = "Goal Completed! 🎉"
-             statusText.setTextColor(ContextCompat.getColor(requireContext(), R.color.primary))
-         }
- 
-         // Click on entire card to view details
-         // Click on entire card to view details or select
-         val cardView = view as com.google.android.material.card.MaterialCardView
-         
-         // Sync Selection State on Bind
-         val isSelected = selectedGoalIds.contains(goal.goalId)
-         cardView.isChecked = isSelected
-         cardView.setCardBackgroundColor(
-            if (isSelected) requireContext().getColor(R.color.primary_container) 
-            else requireContext().getColor(R.color.surface)
-         )
-         
-         cardView.setOnClickListener {
-             if (isSelectionMode) {
-                 toggleSelection(goal.goalId, cardView)
-             } else {
-                 val goalDetailFragment = GoalDetailFragment.newInstance(goal.goalId)
-                 requireActivity().supportFragmentManager.beginTransaction()
-                     .replace(R.id.fragment_container, goalDetailFragment)
-                     .addToBackStack("goal_detail")
-                     .commit()
-             }
-         }
+    private fun addGoalCard(
+        goal: Goal, 
+        totalSteps: Int, 
+        completedSteps: Int, 
+        steps: List<com.example.selftracker.models.GoalStep>
+    ) {
+        val view = LayoutInflater.from(requireContext()).inflate(R.layout.item_goal_card, goalsContainer, false)
+        
+        // Set Tag for finding view by ID later (Select All)
+        view.tag = goal.goalId
+
+        val nameText = view.findViewById<TextView>(R.id.goal_name)
+        val statusText = view.findViewById<TextView>(R.id.goal_status_text)
+        val progressBar = view.findViewById<com.google.android.material.progressindicator.LinearProgressIndicator>(R.id.goal_progress_bar)
+        val stepsContainer = view.findViewById<com.google.android.flexbox.FlexboxLayout>(R.id.steps_container)
+        val iconView = view.findViewById<ImageView>(R.id.icon_target)
+        
+        nameText.text = goal.name
+        
+        // Load AI Icon if exists
+        android.util.Log.d("GoalsFragment", "Goal: ${goal.name}, IconPath: ${goal.localIconPath}")
+        if (goal.localIconPath != null) {
+            val path = goal.localIconPath!!
+            if (path.startsWith("http")) {
+                // Load Scraped Logo from URL
+                Glide.with(requireContext())
+                    .load(path)
+                    .placeholder(R.drawable.ic_rocket_minimal)
+                    .error(R.drawable.ic_rocket_minimal)
+                    .centerInside()
+                    .into(iconView)
+                iconView.imageTintList = null
+            } else {
+                // Check Memory Cache First (Fast Path)
+                val cached = iconCache.get(path)
+                if (cached != null) {
+                    iconView.setImageDrawable(cached)
+                    iconView.imageTintList = null
+                } else {
+                    // Not in cache, load asynchronously
+                    viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+                        val drawable = loadIconFromFile(path)
+                        if (drawable != null) {
+                            // Add to cache
+                            iconCache.put(path, drawable as android.graphics.drawable.BitmapDrawable)
+                            
+                            withContext(Dispatchers.Main) {
+                                // Verify tag hasn't changed (view recycling)
+                                if (view.tag == goal.goalId) {
+                                    iconView.setImageDrawable(drawable)
+                                    iconView.imageTintList = null 
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        val progress = if (totalSteps > 0) (completedSteps.toFloat() / totalSteps.toFloat() * 100).toInt() else 0
+        progressBar.progress = progress
+        
+        statusText.text = if (totalSteps == 0) "No steps added" else "$completedSteps/$totalSteps Steps Completed"
+
+        // Load steps and render as dots (Using pre-loaded steps)
+        steps.sortedBy { it.orderIndex }.forEachIndexed { index, step ->
+            addStepDot(stepsContainer, step, index + 1)
+        }
+        
+    
+        if (completedSteps >= totalSteps && totalSteps > 0) {
+            statusText.text = "Goal Completed! 🎉"
+            statusText.setTextColor(ContextCompat.getColor(requireContext(), R.color.primary))
+        }
+
+        // Click on entire card to view details
+        // Click on entire card to view details or select
+        val cardView = view as com.google.android.material.card.MaterialCardView
+        
+        // Sync Selection State on Bind
+        val isSelected = selectedGoalIds.contains(goal.goalId)
+        cardView.isChecked = isSelected
+        cardView.setCardBackgroundColor(
+           if (isSelected) requireContext().getColor(R.color.primary_container) 
+           else requireContext().getColor(R.color.surface)
+        )
+        
+        cardView.setOnClickListener {
+            if (isSelectionMode) {
+                toggleSelection(goal.goalId, cardView)
+            } else {
+                val goalDetailFragment = GoalDetailFragment.newInstance(goal.goalId)
+                requireActivity().supportFragmentManager.beginTransaction()
+                    .replace(R.id.fragment_container, goalDetailFragment)
+                    .addToBackStack("goal_detail")
+                    .commit()
+            }
+        }
         
         cardView.setOnLongClickListener {
             if (!isSelectionMode) {
@@ -312,7 +348,6 @@ class GoalsFragment : Fragment() {
             }
         }
         
-
 
         goalsContainer.addView(view)
     }
