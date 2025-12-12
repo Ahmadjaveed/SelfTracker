@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingHorizontal="16dp"
+    android:paddingVertical="12dp"
+    android:background="?attr/selectableItemBackground">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <ImageView
+            android:id="@+id/icon_notification_type"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:src="@drawable/ic_notifications"
+            app:tint="@color/primary"
+            android:background="@drawable/bg_circle_soft" 
+            android:padding="6dp"/>
+            <!-- Note: bg_circle_soft needs to be created or use generic shape -->
+            
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:layout_marginStart="12dp">
+
+            <TextView
+                android:id="@+id/notification_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Habit Reminder"
+                android:textAppearance="@style/TextAppearance.Material3.LabelLarge"
+                android:textColor="@color/on_surface"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/notification_message"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Don't forget to drink water today!"
+                android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+                android:textColor="@color/on_surface_variant"
+                android:maxLines="2"
+                android:ellipsize="end" 
+                android:layout_marginTop="2dp"/>
+                
+        </LinearLayout>
+        
+        <ImageView
+            android:id="@+id/status_dot"
+            android:layout_width="8dp"
+            android:layout_height="8dp"
+            android:src="@drawable/bg_circle_solid"
+            app:tint="@color/primary"
+            android:visibility="gone" />
+
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/notification_time"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="2 hrs ago"
+        android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
+        android:textColor="@color/outline"
+        android:gravity="end"
+        android:layout_marginTop="4dp" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/outline_variant"
+        android:layout_marginTop="12dp" 
+        android:alpha="0.5"/>
+
+</LinearLayout>

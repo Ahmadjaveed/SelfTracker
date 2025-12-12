@@ -86,6 +86,7 @@ class HabitAdapter(
         private val habitTarget: TextView = itemView.findViewById(R.id.habit_target)
         private val habitStreak: TextView = itemView.findViewById(R.id.habit_streak)
         private val habitBestStreak: TextView = itemView.findViewById(R.id.habit_best_streak)
+        private val habitFreezeCount: TextView = itemView.findViewById(R.id.habit_freeze_count)
         private val progressBar: LinearProgressIndicator = itemView.findViewById(R.id.progress_bar)
         private val btnCompleteHabit: MaterialButton = itemView.findViewById(R.id.btn_complete_habit)
         private val cardRoot: com.google.android.material.card.MaterialCardView = itemView.findViewById(R.id.card_root)
@@ -128,6 +129,7 @@ class HabitAdapter(
             habitTarget.text = "Target: ${habit.targetValue} ${habit.unit}"
             habitStreak.text = "${habit.currentStreak}"
             habitBestStreak.text = "${habit.bestStreak}"
+            habitFreezeCount.text = "${habit.monthlyFreezeCount}/2"
             
             // Selection Visuals
             val isSelected = selectedHabits.contains(habit.habitId)

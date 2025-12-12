@@ -132,19 +132,21 @@ class GoalGeneratorRepository {
         }
     }
 
-    private fun downloadUrlContent(url: String): String? {
-        return try {
-            val request = okhttp3.Request.Builder().url(url).build()
-            client.newCall(request).execute().use { response ->
-                if (response.isSuccessful) {
-                    response.body?.string()
-                } else {
-                    null
+    private suspend fun downloadUrlContent(url: String): String? {
+        return withContext(Dispatchers.IO) {
+            try {
+                val request = okhttp3.Request.Builder().url(url).build()
+                client.newCall(request).execute().use { response ->
+                    if (response.isSuccessful) {
+                        response.body?.string()
+                    } else {
+                        null
+                    }
                 }
+            } catch (e: Exception) {
+                logError("Error downloading content from $url", e)
+                null
             }
-        } catch (e: Exception) {
-            logError("Error downloading content from $url", e)
-            null
         }
     }
 
@@ -204,12 +206,30 @@ class GoalGeneratorRepository {
             if (svgContent != null) return svgContent
         }
 
-        // 2. AI Smart Domain Prediction (Priority 2) - REMOVED strictly per user request (was using Clearbit)
-        // We skip trying to blindly guess domains to avoid blurry raster images.
+        // 2. If simple matching fails, use AI to extract the CORE keyword
+        // e.g. "Secure a Software Engineer position at google" -> "google"
+        val extractedKeyword = extractIconKeyword(goalName)
+        log("Extracted Icon Keyword: $extractedKeyword")
+        
+        if (extractedKeyword != null && extractedKeyword.lowercase() != goalName.lowercase()) {
+             // 2a. Retry Devicon with extracted keyword
+             val devIconUrlRetry = findDeviconUrl(extractedKeyword)
+             if (devIconUrlRetry != null) {
+                  log("Found Devicon URL (via extraction): $devIconUrlRetry")
+                  val svgContent = downloadUrlContent(devIconUrlRetry)
+                  if (svgContent != null) return svgContent
+             }
+             
+             // 2b. Retry Direct CDN with extracted keyword
+            val cdnIconUrlRetry = findDirectCdnIcon(extractedKeyword)
+            if (cdnIconUrlRetry != null) {
+                log("Found Direct CDN Icon (via extraction): $cdnIconUrlRetry")
+                val svgContent = downloadUrlContent(cdnIconUrlRetry)
+                if (svgContent != null) return svgContent
+            }
+        }
 
-        // 3. Fallback to Standard Scraping (Name-based) - REMOVED (was using Clearbit Autocomplete)
-         
-        // 4. Last Resort: Local Generic Icon
+        // 3. Last Resort: Local Generic Icon
         return generateLocalIcon()
     }
 
@@ -445,17 +465,50 @@ class GoalGeneratorRepository {
         }
     }
 
-    suspend fun generateMotivation(habit: String): String {
-        log("generateMotivation called for: $habit")
+    suspend fun generateMotivation(target: String, type: String = "HABIT"): String {
+        log("generateMotivation called for: $target, type: $type")
         
         return try {
             if (apiKey.isBlank()) throw Exception("API Key is missing")
-            val prompt = "Write a short, punchy (max 12 words) notification reminder to do '$habit' right now. Be motivating, friendly, and urgent. Do not use quotes."
+            
+            val context = when(type) {
+                "HABIT" -> "notification reminder to do the habit '$target' right now"
+                "STEP" -> "notification reminder to complete the goal step '$target' today"
+                "SUBSTEP" -> "notification reminder to finish the task '$target' soon"
+                "INACTIVITY" -> "gentle but firm wake-up call notification because the user hasn't made progress on '$target' recently"
+                "STREAK_FREEZE" -> "friendly reassurance that the user's streak for '$target' verified and saved by a freeze because they missed yesterday! Encourage them playfully."
+                else -> "motivational quote about '$target'"
+            }
+            
+            val prompt = "Write a short, punchy (max 12 words) $context. Be motivating, friendly, and urgent. Do not use quotes."
             
             var text = generateContentWithFallback(prompt)
             text.replace("\"", "").trim()
         } catch (e: Exception) {
-            "Time to work on $habit! You got this."
+            "Time to work on $target! You got this."
+        }
+    }
+
+    private suspend fun extractIconKeyword(goalName: String): String? {
+        if (apiKey.isBlank()) return null
+        
+        val prompt = """
+            Task: Extract the single most relevant brand, technology, or activity keyword for finding an icon for: "$goalName".
+            Return ONLY the keyword. No punctuation. Lowercase.
+            
+            Examples:
+            "Secure a Software Engineer position at google" -> "google"
+            "Learn to code in Python 3" -> "python"
+            "Mastering Adobe Photoshop" -> "photoshop"
+            "Drink more water" -> "water"
+        """.trimIndent()
+        
+        return try {
+            val text = generateContentWithFallback(prompt)
+            text.trim().lowercase().replace(Regex("[^a-z0-9]"), "")
+        } catch (e: Exception) {
+            logError("Keyword extraction failed", e)
+            null
         }
     }
 
@@ -463,7 +516,11 @@ class GoalGeneratorRepository {
         BuildConfig.OPENROUTER_API_KEY_1, // Primary
         BuildConfig.OPENROUTER_API_KEY_2  // Fallback
     )
-    private val client = okhttp3.OkHttpClient()
+    private val client = okhttp3.OkHttpClient.Builder()
+        .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+        .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+        .writeTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+        .build()
 
     /**
      * Tries to generate content using a list of models. Returns the first successful response.
@@ -561,13 +618,13 @@ class GoalGeneratorRepository {
     private suspend fun generateWithOpenRouter(prompt: String): String {
         val fallbackModels = listOf(
             // Tier 1: High quality free models (Try these first)
+            "nvidia/nemotron-nano-12b-v2-vl:free", // Verified working & requested priority
             "google/gemini-2.0-flash-exp:free",
             "meta-llama/llama-3.2-3b-instruct:free", // Fast & reliable
             "liquid/lfm-40b:free", // High quality, often available
             
             // Tier 2: Larger experimental models (Good but maybe rate limited)
             "meta-llama/llama-3.3-70b-instruct:free",
-            "nvidia/nemotron-nano-12b-v2-vl:free",
             "nex-agi/deepseek-v3.1-nex-n1:free",
             "allenai/olmo-3-32b-think:free",
             

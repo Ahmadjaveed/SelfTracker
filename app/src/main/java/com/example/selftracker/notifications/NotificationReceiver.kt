@@ -11,13 +11,15 @@ import com.example.selftracker.workers.AiNotificationWorker
 class NotificationReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == "com.example.selftracker.NOTIFY") {
-            val habitName = intent.getStringExtra("HABIT_NAME") ?: "Habit"
-            val habitId = intent.getIntExtra("HABIT_ID", -1)
+            val targetName = intent.getStringExtra("TARGET_NAME") ?: intent.getStringExtra("HABIT_NAME") ?: "Task"
+            val targetId = intent.getIntExtra("TARGET_ID", intent.getIntExtra("HABIT_ID", -1))
+            val targetType = intent.getStringExtra("TARGET_TYPE") ?: "HABIT"
 
             val workRequest = OneTimeWorkRequestBuilder<AiNotificationWorker>()
                 .setInputData(workDataOf(
-                    "HABIT_NAME" to habitName,
-                    "HABIT_ID" to habitId
+                    "TARGET_NAME" to targetName,
+                    "TARGET_ID" to targetId,
+                    "TARGET_TYPE" to targetType
                 ))
                 .build()
 

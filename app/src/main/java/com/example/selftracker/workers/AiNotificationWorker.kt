@@ -20,19 +20,30 @@ class AiNotificationWorker(
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
-        val habitName = inputData.getString("HABIT_NAME") ?: return Result.failure()
-        val habitId = inputData.getInt("HABIT_ID", -1)
+        val targetName = inputData.getString("TARGET_NAME") ?: inputData.getString("HABIT_NAME") ?: return Result.failure()
+        val targetId = inputData.getInt("TARGET_ID", inputData.getInt("HABIT_ID", -1))
+        val targetType = inputData.getString("TARGET_TYPE") ?: "HABIT"
 
         // 1. Generate Motivation
         val repository = GoalGeneratorRepository()
         val message = try {
-            repository.generateMotivation(habitName)
+            repository.generateMotivation(targetName, targetType)
         } catch (e: Exception) {
-            "Time to work on $habitName!" // Fallback
+            "Time to work on $targetName!" // Fallback
         }
 
-        // 2. Show Notification
-        showNotification(habitId, habitName, message)
+        // 2. Save to Database (In-App History)
+        val database = com.example.selftracker.database.SelfTrackerDatabase.getDatabase(applicationContext)
+        val notification = com.example.selftracker.models.Notification(
+            title = "SelfTracker: $targetName",
+            message = message,
+            timestamp = System.currentTimeMillis(),
+            type = targetType
+        )
+        database.notificationDao().insert(notification)
+
+        // 3. Show System Notification
+        showNotification(targetId, targetName, message)
 
         return Result.success()
     }

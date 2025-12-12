@@ -23,5 +23,6 @@ data class HabitLog(
     val habitId: Int,
     val date: String,
     val isCompleted: Boolean = false,
-    val actualValue: Int = 0
+    val actualValue: Int = 0,
+    val isFrozen: Boolean = false
 )

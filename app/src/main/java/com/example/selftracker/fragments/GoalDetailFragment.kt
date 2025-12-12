@@ -348,7 +348,15 @@ class GoalDetailFragment : Fragment() {
             val resource = resources[position]
             holder.title.text = resource.title
             
-            val host = try { java.net.URI(resource.url).host ?: resource.url } catch(e:Exception) { "Link" }
+            var host = "Link"
+            try {
+                // heuristic: if it doesn't start with http, it might be invalid or relative
+                if (resource.url.startsWith("http")) {
+                     val uri = java.net.URI(resource.url)
+                     host = uri.host ?: "Link"
+                }
+            } catch(e:Exception) { }
+            
             holder.url.text = host
             
             holder.chip.text = resource.resourceType
@@ -413,24 +421,22 @@ class GoalDetailFragment : Fragment() {
                 } else {
                     // Start Background Fetch for Metadata if not video
                     // We shouldn't do this inside onBind usually, but for a prototype it's okay if managed.
-                    // Better: Trigger generic favicon first, then fetch.
                     
-                    // Favicons are images too, but might be small. Treat as image but maybe fitCenter?
-                    // Usually we want them to look like icons? 
-                    // Let's try treating them as images (no tint).
-                    // Let's try treating them as images (no tint).
-                    showAsImage()
-                    
-                    val faviconUrl = "https://www.google.com/s2/favicons?domain=$host&sz=512"
-                    
-                    Glide.with(context)
-                        .load(faviconUrl)
-                        .placeholder(if (resource.resourceType == "ARTICLE") R.drawable.ic_menu_book else R.drawable.ic_link)
-                        .fitCenter()
-                        .into(holder.iconInner)
+                    if (host != "Link" && host.isNotEmpty() && !host.contains("#")) {
+                        showAsImage()
+                        val faviconUrl = "https://www.google.com/s2/favicons?domain=$host&sz=512"
                         
-                    // Fire and forget fetcher
-                    fetchLinkMetadata(resource)
+                        Glide.with(context)
+                            .load(faviconUrl)
+                            .placeholder(if (resource.resourceType == "ARTICLE") R.drawable.ic_menu_book else R.drawable.ic_link)
+                            .fitCenter()
+                            .into(holder.iconInner)
+                            
+                        // Fire and forget fetcher
+                        fetchLinkMetadata(resource)
+                    } else {
+                        showAsIcon(if (resource.resourceType == "ARTICLE") R.drawable.ic_menu_book else R.drawable.ic_link)
+                    }
                 }
             }
              
@@ -455,6 +461,8 @@ class GoalDetailFragment : Fragment() {
         
         private fun fetchLinkMetadata(resource: com.example.selftracker.models.GoalResource) {
             if (!resource.thumbnailUrl.isNullOrEmpty()) return
+            // Validate URL before scraping to avoid crashes/logs
+            if (!android.util.Patterns.WEB_URL.matcher(resource.url).matches()) return
 
             viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
                val logTag = "LinkScraper"
@@ -538,7 +546,13 @@ class GoalDetailFragment : Fragment() {
          val pattern = "(?<=watch\\?v=|/videos/|embed\\/|youtu.be\\/|\\/v\\/|\\/e\\/|watch\\?v%3D|watch\\?feature=player_embedded&v=|%2Fvideos%2F|embed%2F|youtu.be%2F|%2Fv%2F)[^#\\&\\?\\n]*"
          val compiledPattern = java.util.regex.Pattern.compile(pattern)
          val matcher = compiledPattern.matcher(url)
-         return if (matcher.find()) matcher.group() else null
+         if (matcher.find()) {
+             val id = matcher.group()
+             // Sanitize: YouTube IDs are alphanumeric with - and _
+             // Discard if it contains weird characters (prevent encoding issues/bad partial matches)
+             return if (id.matches(Regex("[a-zA-Z0-9_-]+"))) id else null
+         }
+         return null
     }
 
     private fun updateStepsUI(steps: List<GoalStep>, allSubSteps: List<GoalSubStep> = emptyList()) {
@@ -928,6 +942,18 @@ class GoalDetailFragment : Fragment() {
         val btnSave = dialogView.findViewById<Button>(R.id.btn_save_step)
         // btn_cancel_step is removed, replaced by header close icon
         val btnClose = dialogView.findViewById<ImageView>(R.id.btn_close_dialog)
+        val btnSetReminder = dialogView.findViewById<TextView>(R.id.btn_set_reminder)
+        
+        var reminderTimestamp: Long? = null
+
+        btnSetReminder.setOnClickListener {
+            showDateTimePicker { timestamp ->
+                reminderTimestamp = timestamp
+                val formatter = java.text.SimpleDateFormat("MMM dd, HH:mm", java.util.Locale.getDefault())
+                btnSetReminder.text = "Reminder: ${formatter.format(java.util.Date(timestamp))}"
+                btnSetReminder.setTextColor(androidx.core.content.ContextCompat.getColor(requireContext(), R.color.primary))
+            }
+        }
 
         // Setup duration unit dropdown
         val durationUnits = arrayOf("days", "weeks", "months")
@@ -962,9 +988,14 @@ class GoalDetailFragment : Fragment() {
                         duration = duration,
                         durationUnit = durationUnit,
                         isCompleted = false,
-                        orderIndex = nextOrderIndex
+                        orderIndex = nextOrderIndex,
+                        reminderTime = reminderTimestamp
                     )
-                    database.goalStepDao().insertGoalStep(newStep)
+                    val newId = database.goalStepDao().insertGoalStep(newStep)
+                    
+                    if (reminderTimestamp != null) {
+                        com.example.selftracker.utils.ReminderScheduler.scheduleStepReminder(requireContext(), newId, name, reminderTimestamp!!)
+                    }
                     
                     withContext(Dispatchers.Main) {
                        Toast.makeText(requireContext(), "Step added!", Toast.LENGTH_SHORT).show()
@@ -1009,7 +1040,26 @@ class GoalDetailFragment : Fragment() {
         editStepName.setText(step.name)
         editStepDescription.setText(step.description ?: "")
         editStepDuration.setText(step.duration.toString())
+        editStepDuration.setText(step.duration.toString())
         btnSave.text = "Update Step" // Update button text
+        
+        val btnSetReminder = dialogView.findViewById<TextView>(R.id.btn_set_reminder)
+        var reminderTimestamp: Long? = step.reminderTime
+        
+        if (reminderTimestamp != null) {
+            val formatter = java.text.SimpleDateFormat("MMM dd, HH:mm", java.util.Locale.getDefault())
+            btnSetReminder.text = "Reminder: ${formatter.format(java.util.Date(reminderTimestamp!!))}"
+            btnSetReminder.setTextColor(androidx.core.content.ContextCompat.getColor(requireContext(), R.color.primary))
+        }
+
+        btnSetReminder.setOnClickListener {
+            showDateTimePicker { timestamp ->
+                reminderTimestamp = timestamp
+                val formatter = java.text.SimpleDateFormat("MMM dd, HH:mm", java.util.Locale.getDefault())
+                btnSetReminder.text = "Reminder: ${formatter.format(java.util.Date(timestamp))}"
+                btnSetReminder.setTextColor(androidx.core.content.ContextCompat.getColor(requireContext(), R.color.primary))
+            }
+        }
 
         // Setup duration unit dropdown
         val durationUnits = arrayOf("days", "weeks", "months")
@@ -1035,9 +1085,15 @@ class GoalDetailFragment : Fragment() {
                         name = name,
                         description = if (description.isNotEmpty()) description else null,
                         duration = duration,
-                        durationUnit = durationUnit
+                        durationUnit = durationUnit,
+                        reminderTime = reminderTimestamp
                     )
                     database.goalStepDao().updateGoalStep(updatedStep)
+                    
+                    if (reminderTimestamp != null) {
+                        com.example.selftracker.utils.ReminderScheduler.scheduleStepReminder(requireContext(), updatedStep.stepId, name, reminderTimestamp!!)
+                    }
+                    
                     withContext(Dispatchers.Main) {
                         Toast.makeText(requireContext(), "Step updated", Toast.LENGTH_SHORT).show()
                     }
@@ -1063,6 +1119,18 @@ class GoalDetailFragment : Fragment() {
         val editDurationUnit = dialogView.findViewById<AutoCompleteTextView>(R.id.edit_duration_unit)
         val btnSave = dialogView.findViewById<Button>(R.id.btn_save_substep)
         val btnClose = dialogView.findViewById<ImageView>(R.id.btn_close_dialog)
+        val btnSetReminder = dialogView.findViewById<TextView>(R.id.btn_set_reminder)
+        
+        var reminderTimestamp: Long? = null
+
+        btnSetReminder.setOnClickListener {
+            showDateTimePicker { timestamp ->
+                reminderTimestamp = timestamp
+                val formatter = java.text.SimpleDateFormat("MMM dd, HH:mm", java.util.Locale.getDefault())
+                btnSetReminder.text = "Reminder: ${formatter.format(java.util.Date(timestamp))}"
+                btnSetReminder.setTextColor(androidx.core.content.ContextCompat.getColor(requireContext(), R.color.primary))
+            }
+        }
 
         // Setup duration unit dropdown
         val durationUnits = arrayOf("days", "weeks", "months")
@@ -1096,9 +1164,16 @@ class GoalDetailFragment : Fragment() {
                         duration = duration,
                         durationUnit = durationUnit,
                         isCompleted = false,
-                        orderIndex = nextOrderIndex
+                        orderIndex = nextOrderIndex,
+                        reminderTime = reminderTimestamp
                     )
-                    database.goalSubStepDao().insertGoalSubStep(newSubstep)
+                    val newId = database.goalSubStepDao().insertGoalSubStep(newSubstep)
+                    
+                    if (reminderTimestamp != null) {
+                        com.example.selftracker.utils.ReminderScheduler.scheduleSubStepReminder(requireContext(), newId, name, reminderTimestamp!!)
+                    }
+                    
+
                 }
                 dialog.dismiss()
             } else {
@@ -1121,6 +1196,24 @@ class GoalDetailFragment : Fragment() {
         val editDurationUnit = dialogView.findViewById<AutoCompleteTextView>(R.id.edit_duration_unit)
         val btnSave = dialogView.findViewById<Button>(R.id.btn_save_substep)
         val btnClose = dialogView.findViewById<ImageView>(R.id.btn_close_dialog)
+        val btnSetReminder = dialogView.findViewById<TextView>(R.id.btn_set_reminder)
+        
+        var reminderTimestamp: Long? = substep.reminderTime
+
+        if (reminderTimestamp != null) {
+            val formatter = java.text.SimpleDateFormat("MMM dd, HH:mm", java.util.Locale.getDefault())
+            btnSetReminder.text = "Reminder: ${formatter.format(java.util.Date(reminderTimestamp!!))}"
+            btnSetReminder.setTextColor(androidx.core.content.ContextCompat.getColor(requireContext(), R.color.primary))
+        }
+
+        btnSetReminder.setOnClickListener {
+            showDateTimePicker { timestamp ->
+                reminderTimestamp = timestamp
+                val formatter = java.text.SimpleDateFormat("MMM dd, HH:mm", java.util.Locale.getDefault())
+                btnSetReminder.text = "Reminder: ${formatter.format(java.util.Date(timestamp))}"
+                btnSetReminder.setTextColor(androidx.core.content.ContextCompat.getColor(requireContext(), R.color.primary))
+            }
+        }
         
         // Note: XML Refactor didn't include ID for title TextView (it's hardcoded "New Sub-step"). 
         // We skip updating title for now or just rely on Button text "Update" to indicate mode.
@@ -1155,9 +1248,14 @@ class GoalDetailFragment : Fragment() {
                         name = name,
                         description = if (description.isNotEmpty()) description else null,
                         duration = duration,
-                        durationUnit = durationUnit
+                        durationUnit = durationUnit,
+                        reminderTime = reminderTimestamp
                     )
                     database.goalSubStepDao().updateGoalSubStep(updatedSubstep)
+                    
+                    if (reminderTimestamp != null) {
+                        com.example.selftracker.utils.ReminderScheduler.scheduleSubStepReminder(requireContext(), updatedSubstep.subStepId, name, reminderTimestamp!!)
+                    }
                 }
                 dialog.dismiss()
             } else {
@@ -1544,5 +1642,34 @@ class GoalDetailFragment : Fragment() {
             fragment.arguments = args
             return fragment
         }
+    }
+    private fun showDateTimePicker(onDateTimeSelected: (Long) -> Unit) {
+        val calendar = java.util.Calendar.getInstance()
+        val datePickerDialog = android.app.DatePickerDialog(
+            requireContext(),
+            { _, year, month, dayOfMonth ->
+                calendar.set(java.util.Calendar.YEAR, year)
+                calendar.set(java.util.Calendar.MONTH, month)
+                calendar.set(java.util.Calendar.DAY_OF_MONTH, dayOfMonth)
+                
+                android.app.TimePickerDialog(
+                    requireContext(),
+                    { _, hourOfDay, minute ->
+                        calendar.set(java.util.Calendar.HOUR_OF_DAY, hourOfDay)
+                        calendar.set(java.util.Calendar.MINUTE, minute)
+                        calendar.set(java.util.Calendar.SECOND, 0)
+                        onDateTimeSelected(calendar.timeInMillis)
+                    },
+                    calendar.get(java.util.Calendar.HOUR_OF_DAY),
+                    calendar.get(java.util.Calendar.MINUTE),
+                    true // 24 hour format
+                ).show()
+            },
+            calendar.get(java.util.Calendar.YEAR),
+            calendar.get(java.util.Calendar.MONTH),
+            calendar.get(java.util.Calendar.DAY_OF_MONTH)
+        )
+        datePickerDialog.datePicker.minDate = System.currentTimeMillis() - 1000
+        datePickerDialog.show()
     }
 }

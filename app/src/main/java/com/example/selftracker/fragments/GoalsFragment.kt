@@ -184,7 +184,8 @@ class GoalsFragment : Fragment() {
         // -----------------------------------------------------------
 
         btnNotifications.setOnClickListener {
-            Toast.makeText(context, "No new notifications", Toast.LENGTH_SHORT).show()
+             val sheet = NotificationBottomSheet()
+             sheet.show(childFragmentManager, "NotificationBottomSheet")
         }
         
         // Handle generic menu items (Settings)
@@ -203,18 +204,26 @@ class GoalsFragment : Fragment() {
     }
 
      private fun loadGoals() {
-         // 1. Load All Steps (Bulk Optimization)
-         database.goalStepDao().getAllSteps().observe(viewLifecycleOwner) { allSteps ->
-             allStepsMap = allSteps.groupBy { it.goalId }
-             refreshGoalsUI()
-         }
+          // 1. Load All Steps (Bulk Optimization)
+          database.goalStepDao().getAllSteps().observe(viewLifecycleOwner) { allSteps ->
+              allStepsMap = allSteps.groupBy { it.goalId }
+              refreshGoalsUI()
+          }
 
-         // 2. Load Goals
-         database.goalDao().getAllGoalsWithProgress().observe(viewLifecycleOwner) { goalsWithProgress ->
-             currentGoalsList = goalsWithProgress
-             refreshGoalsUI()
-         }
-     }
+          // 2. Load Goals
+          database.goalDao().getAllGoalsWithProgress().observe(viewLifecycleOwner) { goalsWithProgress ->
+              currentGoalsList = goalsWithProgress
+              refreshGoalsUI()
+              
+              // 3. Auto-Migration: triggers download for any goals that still have http icons
+              goalsWithProgress.forEach { item ->
+                  val path = item.goal.localIconPath
+                  if (path != null && path.startsWith("http")) {
+                      triggerIconDownload(item.goal.goalId, path)
+                  }
+              }
+          }
+      }
 
      private fun refreshGoalsUI() {
          goalsContainer.removeAllViews()
@@ -683,30 +692,71 @@ class GoalsFragment : Fragment() {
         }
         
         return try {
+            // 1. Try decoding as Bitmap first (Fastest for PNG/JPG)
+            val bitmap = android.graphics.BitmapFactory.decodeFile(path)
+            if (bitmap != null) {
+                return android.graphics.drawable.BitmapDrawable(resources, bitmap)
+            }
+            
+            // 2. If Bitmap failed, try SVG
             val fis = java.io.FileInputStream(file)
             val svg = com.caverock.androidsvg.SVG.getFromInputStream(fis)
             
-            // Set high resolution for rendering (e.g., 512x512) to avoid blurriness
-            // The SVG allows us to render it at ANY size. 512 is plenty for phones.
             val size = 512f
             svg.documentWidth = size
             svg.documentHeight = size
             
-            val bitmap = android.graphics.Bitmap.createBitmap(
+            val svgBitmap = android.graphics.Bitmap.createBitmap(
                 size.toInt(), 
                 size.toInt(), 
                 android.graphics.Bitmap.Config.ARGB_8888
             )
             
-            val canvas = android.graphics.Canvas(bitmap)
-            // Render directly to the 512x512 canvas
+            val canvas = android.graphics.Canvas(svgBitmap)
             svg.renderToCanvas(canvas)
             
-            android.graphics.drawable.BitmapDrawable(resources, bitmap)
+            android.graphics.drawable.BitmapDrawable(resources, svgBitmap)
             
         } catch (e: Exception) {
             android.util.Log.w("GoalsFragment", "Failed to load custom icon: ${e.message}. Using default.")
-            null // Will trigger default icon usage in caller
+            null
+        }
+    }
+
+    private fun triggerIconDownload(goalId: Long, url: String) {
+        // Prevent duplicate downloads if we already have it in cache or processing
+        // Ideally we'd map this, but for now just launch.
+        
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                android.util.Log.d("GoalsFragment", "Starting background download for Goal $goalId: $url")
+                
+                // standard URL download
+                val bytes = java.net.URL(url).readBytes()
+                
+                if (bytes.isNotEmpty()) {
+                    // Detect extension
+                    val ext = if (url.contains(".png")) "png" else if (url.contains(".jpg") || url.contains(".jpeg")) "jpg" else "svg"
+                    val iconFileName = "goal_icon_${goalId}_${System.currentTimeMillis()}.$ext"
+                    val iconFile = java.io.File(requireContext().filesDir, iconFileName)
+                    iconFile.writeBytes(bytes)
+                    
+                    val newPath = iconFile.absolutePath
+                    android.util.Log.d("GoalsFragment", "Download success. Updating DB: $newPath")
+                    
+                    // Update DB
+                    val currentGoal = database.goalDao().getGoalById(goalId)
+                    if (currentGoal != null) {
+                        val updated = currentGoal.copy(localIconPath = newPath)
+                        database.goalDao().updateGoal(updated)
+                    }
+                    
+                    // Pre-fill Cache (optional, but good for immediate switch)
+                    // We need to load it on Main thread or construct drawable carefully
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("GoalsFragment", "Background download failed for $url", e)
+            }
         }
     }
 
@@ -736,22 +786,18 @@ class GoalsFragment : Fragment() {
                 if (finalIconPath == null) {
                     try {
                         val repository = com.example.selftracker.repository.GoalGeneratorRepository()
-                        // Use the main generation logic which includes Devicon support (Priority 1)
-                        // This ensures "Python" gets the official SVG from jsDelivr, downloaded as content.
                         val iconResult = repository.generateGoalIcon(name, description)
                         
+                        // Just use the result as is. If it's http, we save it as http and let the background downloader fix it.
+                        // If it's SVG content, we save it immediately.
                         if (iconResult.startsWith("http")) {
-                             // It's a URL (e.g. Clearbit)
                              finalIconPath = iconResult
                         } else {
-                             // It's raw SVG content (Devicon or Local Fallback)
-                             // Save to local file so we can load it with our high-res loader
                              val iconFileName = "goal_icon_${System.currentTimeMillis()}.svg"
                              val iconFile = java.io.File(requireContext().filesDir, iconFileName)
                              iconFile.writeText(iconResult)
                              finalIconPath = iconFile.absolutePath
                         }
-                        android.util.Log.d("GoalsFragment", "Auto-generated logo for '$name': $finalIconPath")
                     } catch (e: Exception) {
                          android.util.Log.e("GoalsFragment", "Auto-generation failed", e)
                     }
@@ -836,6 +882,11 @@ class GoalsFragment : Fragment() {
                     dialog.dismiss()
                     Toast.makeText(dialog.context, "Goal Created Successfully!", Toast.LENGTH_SHORT).show()
                     loadGoals() // Refresh list
+                    
+                    // Trigger download if needed
+                    if (finalIconPath != null && finalIconPath!!.startsWith("http")) {
+                        triggerIconDownload(goalId, finalIconPath!!)
+                    }
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {

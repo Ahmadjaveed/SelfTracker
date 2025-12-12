@@ -24,5 +24,6 @@ data class GoalSubStep(
     val isCompleted: Boolean = false,
     val orderIndex: Int = 0,
     val duration: Int = 0,
-    val durationUnit: String = "days"
+    val durationUnit: String = "days",
+    val reminderTime: Long? = null
 )

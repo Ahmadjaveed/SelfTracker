@@ -17,5 +17,7 @@ data class Habit(
     val lastCompletedDate: String? = null,
     val reminderTime: Long? = null,
     val description: String = "",
-    val iconPath: String? = null // Added for Smart Logo support
+    val iconPath: String? = null,
+    val monthlyFreezeCount: Int = 2,
+    val lastFreezeResetDate: String? = null
 )

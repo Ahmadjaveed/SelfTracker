@@ -132,6 +132,25 @@
                 android:drawableTint="@color/text_secondary_dark"
                 android:popupBackground="@drawable/bg_popup_dark"/>
         </LinearLayout>
+        
+        <!-- Reminder (Optional) -->
+        <TextView
+            android:id="@+id/btn_set_reminder"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/bg_input_dark"
+            android:drawableStart="@drawable/ic_notification_small"
+            android:drawablePadding="16dp"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:gravity="center_vertical"
+            android:text="Set Reminder (None)"
+            android:textColor="@color/text_primary_dark"
+            android:textSize="16sp"
+            android:clickable="true"
+            android:focusable="true"
+            android:drawableTint="@color/text_secondary_dark" />
 
     </LinearLayout>
 

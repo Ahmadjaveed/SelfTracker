@@ -14,6 +14,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import com.example.selftracker.R
 import com.example.selftracker.fragments.GoalsFragment
 import com.example.selftracker.fragments.HabitsFragment
@@ -49,6 +50,28 @@ class MainActivity : AppCompatActivity() {
 
         // Start FAB animation immediately
         startFabIdleAnimation()
+
+        // Schedule Inactivity Check (Daily)
+        val workRequest = androidx.work.PeriodicWorkRequestBuilder<com.example.selftracker.workers.InactivityWorker>(24, java.util.concurrent.TimeUnit.HOURS)
+            .build()
+        
+        androidx.work.WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            "InactivityCheck",
+            androidx.work.ExistingPeriodicWorkPolicy.KEEP,
+            workRequest
+        )
+        
+        // Observe Unread Notifications for Badge
+        val database = com.example.selftracker.database.SelfTrackerDatabase.getDatabase(this)
+        lifecycleScope.launchWhenStarted {
+            database.notificationDao().getUnreadCount().collect { count ->
+                if (count > 0) {
+                    bottomNavigation.setCount(ID_GOALS, count.toString())
+                } else {
+                    bottomNavigation.clearCount(ID_GOALS)
+                }
+            }
+        }
     }
 
     private fun initializeViews() {
